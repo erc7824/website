@@ -1,6 +1,10 @@
 ---
 sidebar_position: 1
+slug: /
+title: Introduction
 ---
+
+![erc7824](/img/erc7824.png)
 
 # Introduction
 
