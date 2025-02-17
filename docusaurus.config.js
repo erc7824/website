@@ -45,10 +45,6 @@ const config = {
           routeBasePath: '/',
           sidebarPath: './sidebars.js',
           breadcrumbs: false,
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/erc7824/website/tree/main/docs/',
         },
         blog: false,
         theme: {
@@ -76,26 +72,27 @@ const config = {
           {
             title: 'Docs',
             items: [
-              {
-                label: 'Intro',
-                to: '/',
-              },
+              { label: 'Introduction', to: '/' },
+              { label: 'Interface', to: '/code' },
+              { label: 'FAQ', to: '/faq' },
+              { label: 'Resources', to: '/ref' },
+              { label: 'ERC-7824', to: '/spec' },
             ],
           },
           {
             title: 'Community',
             items: [
               {
-                label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
+                label: 'X',
+                href: 'https://x.com/Yellow',
+              },
+              {
+                label: 'Telegram',
+                href: 'https://t.me/yellow_org',
               },
               {
                 label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
-              },
-              {
-                label: 'X',
-                href: 'https://x.com/Yellow',
+                href: 'https://discord.gg/yellownetwork',
               },
             ],
           },
