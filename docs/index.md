@@ -2,15 +2,18 @@
 sidebar_position: 1
 slug: /
 title: Introduction
+description: Create high-performance chain agnostic dApps using state channels
+keywords: [erc7824, statechannels, chain abstraction, chain agnostic, state channels, ethereum scaling, layer 2, layer 3, nitro, trading, high-speed]
+tags:
+  - erc7824
+  - docs
 ---
 
-![erc7824](/img/erc7824.png)
-
-# Introduction
-
-## Inject Nitro in your Stack
+# Inject Nitro in your Stack
 
 Blockchain technology has introduced a paradigm shift in how digital assets and decentralized applications (dApps) operate. However, scalability, transaction costs, and cross-chain interoperability remain significant challenges. **ERC-7824** and the **Nitro Protocol** provide a solution by enabling **off-chain state channels**, allowing seamless and efficient transactions without compromising on security or performance.
+
+ERC-7824 defines a minimal, universal interface for state channel interactions without assuming any specific underlying chain, making it naturally chain agnostic. It abstracts away chain-specific details by specifying data structures and messaging formats that can be verified on any blockchain with basic smart contract capabilities. As a result, developers can rely on ERC-7824’s standard approach for off-chain interactions and dispute resolution across multiple L1 or L2 networks, preserving interoperability and reusability of state channel components in a wide range of environments.
 
 ## Supercharging Web2/3 Applications
 

@@ -1,3 +1,14 @@
+---
+sidebar_position: 2
+title: Specification
+description: Request for Comment on statechannels framework
+keywords: [erc7824, ERC, Ethereum, statechannels, nitro, sdk, development, state channels, ethereum scaling, L2]
+tags:
+  - erc7824
+  - nitro
+  - docs
+---
+
 # ERC-7824
 
 ## Abstract
@@ -333,7 +344,7 @@ State channels offer significant scalability improvements by minimizing on-chain
 
 ## Backwards Compatibility
 
-No backward compatibility issues found. This ERC is designed to coexist with existing standards and can integrate with [ERC-1271](https://eips.ethereum.org/EIPS/eip-1271) and [ERC-4337](https://www.erc4337.io/)
+No backward compatibility issues found. This ERC is designed to coexist with existing standards and can integrate with [ERC-1271](./erc-1271.md) and [ERC-4337](./erc-4337.md)
 
 ## Security Considerations
 

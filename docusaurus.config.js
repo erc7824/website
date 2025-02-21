@@ -10,8 +10,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'ERC7824',
-  tagline: 'Statechannels norm and framework',
+  title: 'ERC7824 State channels framework',
+  tagline: 'Statechannels norm and framework using nitro protocol',
   favicon: 'img/favicon.ico',
 
   // Set the production url of your site here
@@ -73,10 +73,10 @@ const config = {
             title: 'Docs',
             items: [
               { label: 'Introduction', to: '/' },
-              { label: 'Interface', to: '/code' },
-              { label: 'FAQ', to: '/faq' },
-              { label: 'Resources', to: '/ref' },
               { label: 'ERC-7824', to: '/spec' },
+              { label: 'Protocol', to: '/protocol' },
+              { label: 'Resources', to: '/resources' },
+              { label: 'FAQ', to: '/faq' },
             ],
           },
           {
@@ -106,7 +106,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} , Layer 3 Foundation.`,
+        copyright: `Copyright © ${new Date().getFullYear()}, Layer 3 Foundation. ERC-7824 is under MIT License`,
       },
       prism: {
         theme: prismThemes.github,

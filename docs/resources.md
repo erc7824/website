@@ -1,11 +1,20 @@
+---
+sidebar_position: 4
+title: Resources
+description: Learn more about state channels
+keywords: [erc7824, statechannels, state channels, awesome state channels, ethereum scaling, layer 2, layer 3, nitro, trading, high-speed]
+tags:
+  - erc7824
+  - links
+  - docs
+---
+
 # Resources
 
 ### General Overviews
 
 - [What are State Channels? (Ethereum Foundation)](https://ethereum.org/en/developers/docs/scaling/state-channels/)
 - [State Channels vs. Rollups (Vitalik Buterin)](https://vitalik.eth.limo/general/2021/01/05/rollup.html)
-
----
 
 ### Technical Papers
 
