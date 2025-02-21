@@ -28,6 +28,7 @@
     --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.1);
     --ifm-link-hover-color: #3531ff;
     --ifm-footer-link-hover-color: #3531ff;
+    --ifm-background-color: #000 !important;
 }
 
 [data-theme="light"] .footer {
@@ -43,7 +44,7 @@ a:not([class]):hover {
 
 .footer--dark {
     border-top: 1px solid #333;
-    --ifm-footer-background-color: #1b1b1d;
+    --ifm-footer-background-color: #000;
 }
 
 [data-theme="light"] .logo [fill="#000"] {
