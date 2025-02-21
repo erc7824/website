@@ -15,7 +15,7 @@ tags:
 Below an example in go lang of usage of our upcoming go lang SDK
 Typescript will be also available soon.
 
-```golang
+```go
 package main
 
 import (
