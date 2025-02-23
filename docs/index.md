@@ -19,6 +19,27 @@ ERC-7824 defines a minimal, universal interface for state channel interactions w
 
 The Nitro Protocol is designed to integrate effortlessly with **both Web2 and Web3 applications**. Whether operating in traditional infrastructure or leveraging blockchain ecosystems, developers can **enhance their software stack** with blockchain-grade security and efficiency without sacrificing speed or requiring major architectural changes.
 
+```mermaid
+quadrantChart
+    title Distributed system scaling
+    x-axis Low Speed --> High Speed
+    y-axis Low Trust --> High Trust
+    quadrant-1 Network Overlay
+    quadrant-2 Decentralized Systems
+    quadrant-3 Cross-chain Systems
+    quadrant-4 Centralized Systems
+    Bitcoin: [0.20, 0.8]
+    L2 Chains: [0.57, 0.70]
+    L3 Nitro: [0.75, 0.60]
+    ClearSync: [0.80, 0.85]
+    Solana: [0.60, 0.42]
+    TradFi: [0.85, 0.34]
+    CEX: [0.70, 0.20]
+    Bridges: [0.24, 0.24]
+    Cross-chain Messaging: [0.15, 0.40]
+    Ethereum: [0.35, 0.78]
+```
+
 ## Key Benefits of ERC-7824 and Nitro Protocol
 
 1. **Scalability Without Congestion**  

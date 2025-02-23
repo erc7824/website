@@ -17,6 +17,25 @@ tags:
 
 Off-chain, developers write the code responsible for constructing and signing new states, managing state progression, and orchestrating deposits and withdrawals. This off-chain logic ensures quick state updates without paying on-chain gas fees, since new states only require on-chain submission when there is a disagreement or final payout. By following Nitro’s API and implementing these components carefully, developers can build robust applications that benefit from low latency and trust-minimized on-chain settlements.
 
+## Overview
+
+```mermaid
+graph TD
+  subgraph Nitro Protocol
+    INitroAdjudicator[INitroAdjudicator] -->|Interacts with| IForceMove[IForceMove]
+    INitroAdjudicator -->|Manages outcomes| IMultiAssetHolder[IMultiAssetHolder]
+    INitroAdjudicator -->|Handles states| IStatusManager[IStatusManager]
+
+    IForceMove -->|Implements state transitions| IForceMoveApp[IForceMoveApp]
+    IForceMoveApp -->|Validates states| INitroTypes[INitroTypes]
+  end
+
+  subgraph NitroApps
+    CountingApp[CountingApp] -->|Implement| IForceMoveApp
+    EscrowApp[VEscrowApp] -->|Implement| IForceMoveApp
+  end
+```
+
 ## 1. States & Channels
 
 A state channel can be thought of as a private ledger containing balances and other arbitrary data housed in a data structure called a “state.” The state of the channel is updated, committed to (via signatures), and exchanged between a fixed set of actors (participants). A state channel controls funds which are locked — typically on an L1 blockchain — and those locked funds are unlocked according to the channel’s final state when the channel finishes.
