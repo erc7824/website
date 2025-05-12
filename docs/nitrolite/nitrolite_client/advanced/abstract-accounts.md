@@ -14,7 +14,7 @@ The `NitroliteClient` provides special support for [ERC-4337 Account Abstraction
 
 ## Transaction Preparer Overview
 
-The `txPreparer` is a property of the `NitroliteClient` that provides methods for preparing transaction data without sending it to the blockchain. Each method returns one or more `PreparedTransaction` objects that can be used with Account Abstraction providers.
+The `txPreparer` is a property of the `NitroliteClient` that provides methods for preparing transaction data without sending it to the blockchain. Each method returns one or more [`PreparedTransaction`](../types.md#preparedtransaction) objects that can be used with Account Abstraction providers.
 
 ```typescript
 import { NitroliteClient } from '@erc7824/nitrolite';
@@ -35,7 +35,7 @@ These methods allow you to prepare transactions for the entire channel lifecycle
   name="prepareDepositTransactions"
   description="Prepares deposit transactions for sending tokens to the custody contract. May include an ERC-20 approval transaction if the current allowance is insufficient. Returns an array of transactions that must all be executed for the deposit to succeed."
   params={[{ name: "amount", type: "bigint" }]}
-  returns="Promise<PreparedTransaction[]>"
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)[]>`}
   example={`// Prepare deposit transaction(s) - may include ERC20 approval
 const txs = await client.txPreparer.prepareDepositTransactions(1000000n);
 
@@ -53,7 +53,7 @@ for (const tx of txs) {
   name="prepareApproveTokensTransaction"
   description="Prepares a transaction to approve the custody contract to spend ERC-20 tokens. This is useful when you want to separate approval from the actual deposit operation or when implementing a custom approval flow."
   params={[{ name: "amount", type: "bigint" }]}
-  returns="Promise<PreparedTransaction>"
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare approval transaction
 const tx = await client.txPreparer.prepareApproveTokensTransaction(2000000n);
 
@@ -69,8 +69,8 @@ await aaProvider.sendUserOperation({
 <MethodDetails
   name="prepareCreateChannelTransaction"
   description="Prepares a transaction for creating a new state channel with the specified initial allocation. This transaction calls the custody contract to establish a new channel with the given parameters without executing it immediately."
-  params={[{ name: "params", type: "CreateChannelParams" }]}
-  returns="Promise<PreparedTransaction>"
+  params={[{ name: "params", type: "[CreateChannelParams](../types.md#2-channel-creation)" }]}
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare channel creation transaction
 const tx = await client.txPreparer.prepareCreateChannelTransaction({
   initialAllocationAmounts: [700000n, 300000n],
@@ -90,9 +90,9 @@ await aaProvider.sendUserOperation({
   description="Combines deposit and channel creation into a sequence of prepared transactions. This is ideal for batching with Account Abstraction to create a streamlined onboarding experience. Returns an array of transactions that may include token approval, deposit, and channel creation."
   params={[
     { name: "depositAmount", type: "bigint" },
-    { name: "params", type: "CreateChannelParams" }
+    { name: "params", type: "[CreateChannelParams](../types.md#2-channel-creation)" }
   ]}
-  returns="Promise<PreparedTransaction[]>"
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)[]>`}
   example={`// Prepare deposit + channel creation (potentially 3 txs: approve, deposit, create)
 const txs = await client.txPreparer.prepareDepositAndCreateChannelTransactions(
   1000000n,
@@ -117,8 +117,8 @@ await aaProvider.sendUserOperation({
 <MethodDetails
   name="prepareCheckpointChannelTransaction"
   description="Prepares a transaction to checkpoint a channel state on-chain. This creates an immutable record of the channel state that both parties have agreed to, which is useful for security and dispute resolution."
-  params={[{ name: "params", type: "CheckpointChannelParams" }]}
-  returns="Promise<PreparedTransaction>"
+  params={[{ name: "params", type: "[CheckpointChannelParams](../types.md#3-channel-operations)" }]}
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare checkpoint transaction
 const tx = await client.txPreparer.prepareCheckpointChannelTransaction({
   channelId: '0x...',
@@ -134,8 +134,8 @@ await aaProvider.sendUserOperation({
 <MethodDetails
   name="prepareChallengeChannelTransaction"
   description="Prepares a transaction to challenge a channel with a candidate state. This is used when the counterparty is unresponsive, allowing you to force progress in the dispute resolution process."
-  params={[{ name: "params", type: "ChallengeChannelParams" }]}
-  returns="Promise<PreparedTransaction>"
+  params={[{ name: "params", type: "[ChallengeChannelParams](../types.md#3-channel-operations)" }]}
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare challenge transaction
 const tx = await client.txPreparer.prepareChallengeChannelTransaction({
   channelId: '0x...',
@@ -151,8 +151,8 @@ await aaProvider.sendUserOperation({
 <MethodDetails
   name="prepareResizeChannelTransaction"
   description="Prepares a transaction to adjust the total funds allocated to a channel. This allows you to add more funds to a channel that's running low or reduce locked funds when less capacity is needed."
-  params={[{ name: "params", type: "ResizeChannelParams" }]}
-  returns="Promise<PreparedTransaction>"
+  params={[{ name: "params", type: "[ResizeChannelParams](../types.md#3-channel-operations)" }]}
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare resize transaction
 const tx = await client.txPreparer.prepareResizeChannelTransaction({
   channelId: '0x...',
@@ -170,8 +170,8 @@ await aaProvider.sendUserOperation({
 <MethodDetails
   name="prepareCloseChannelTransaction"
   description="Prepares a transaction to close a channel on-chain using a mutually agreed final state. This transaction unlocks funds according to the agreed allocations and makes them available for withdrawal."
-  params={[{ name: "params", type: "CloseChannelParams" }]}
-  returns="Promise<PreparedTransaction>"
+  params={[{ name: "params", type: "[CloseChannelParams](../types.md#4-channel-closing)" }]}
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare close channel transaction
 const tx = await client.txPreparer.prepareCloseChannelTransaction({
   finalState: {
@@ -195,7 +195,7 @@ await aaProvider.sendUserOperation({
   name="prepareWithdrawalTransaction"
   description="Prepares a transaction to withdraw tokens previously deposited into the custody contract back to the user's wallet. This is the final step in the channel lifecycle, allowing users to reclaim their funds after channels have been closed."
   params={[{ name: "amount", type: "bigint" }]}
-  returns="Promise<PreparedTransaction>"
+  returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare withdrawal transaction
 const tx = await client.txPreparer.prepareWithdrawalTransaction(500000n);
 
@@ -208,16 +208,16 @@ await aaProvider.sendUserOperation({
 
 ## Understanding PreparedTransaction
 
-The `PreparedTransaction` type is the core data structure returned by all transaction preparation methods. It contains all the information needed to construct a transaction or UserOperation:
+The [`PreparedTransaction`](../types.md#preparedtransaction) type is the core data structure returned by all transaction preparation methods. It contains all the information needed to construct a transaction or UserOperation:
 
 ```typescript
 type PreparedTransaction = {
   // Target contract address
   to: Address;
-  
+
   // Contract call data
   data?: Hex;
-  
+
   // ETH value to send (0n for token operations)
   value?: bigint;
 };
