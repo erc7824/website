@@ -1,5 +1,5 @@
 ---
-sidebar_position: 6
+sidebar_position: 7
 title: FAQ
 description: State channels frequently asked questions
 keywords: [erc7824, statechannels, nitro, sdk, faq, state channels, ethereum scaling, L2]
