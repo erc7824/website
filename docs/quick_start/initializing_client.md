@@ -58,7 +58,7 @@ async function initializeNitrolite() {
       custody: '0xYourCustodyContractAddress',
       adjudicator: '0xYourAdjudicatorContractAddress',
       guestAddress: '0xDefaultGuestAddress',
-      tokenAddress: '0xYourTokenAddress', // Optional: for ERC20 tokens
+      tokenAddress: '0xYourTokenAddress',
     };
 
     // Step 2: Create a public client for reading blockchain data
