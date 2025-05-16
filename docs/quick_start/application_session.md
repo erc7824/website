@@ -1,174 +1,1036 @@
 ---
 sidebar_position: 7
-title: Create Application Session
-description: Initialize a new application instance within your channel to support specific transaction types.
+title: Create Application Sessions
+description: Create and manage off-chain application sessions to interact with ClearNodes.
 keywords: [erc7824, nitrolite, application session, state channels, app session]
 ---
 
-# Create Application Session
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
-Application sessions allow you to run specific applications within a state channel. Each application session has its own rules, state, and logic for handling transactions. This guide covers how to create and initialize application sessions.
+# Create Application Sessions
+
+After connecting to a ClearNode and checking your channel balances, you can create application sessions to interact with specific applications on the state channel network. Application sessions allow you to perform off-chain transactions and define custom behavior for your interactions.
 
 ## Understanding Application Sessions
 
-An application session is a specific implementation of application logic that runs within a state channel. It defines:
+Application sessions in Nitrolite allow you to:
 
-- The rules for state transitions
-- How funds are allocated
-- The application's specific data structures
-- Validation logic for transactions
+- Create isolated environments for specific interactions
+- Define rules for off-chain transactions
+- Specify how funds are allocated between participants
+- Implement custom application logic and state management
 
-## Prerequisites
-
-Before creating an application session, ensure:
-
-1. You have an active channel with sufficient funds
-2. You're connected to a ClearNode for communication
-3. All participants are online and available to sign the initial state
+An application session serves as a mechanism to track and manage interactions between participants, with the ClearNode acting as a facilitator.
 
 ## Creating an Application Session
 
-Here's how to create a basic application session:
+To create an application session, you'll use the `createAppSessionMessage` helper from NitroliteRPC. Here's how to do it:
+
+<Tabs>
+  <TabItem value="react" label="React">
 
 ```javascript
-()() Define the application type and initial state
-const appDefinition = {
-  type: 'SimplePayment', ()() Application type
-  appData: {
-    description: 'Payment channel for service X',
-    metadata: {
-      serviceId: '12345',
-      provider: 'ExampleService'
-    }
-  }
-};
+import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { useCallback } from 'react';
 
-()() Create the application session
-const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-const sessionId = await client.createApplicationSession({
-  channelId: channelId,
-  participants: ['0xYourAddress', '0xCounterpartyAddress'],
-  initialState: {
-    balances: ['500000000000000000', '500000000000000000'], ()() 0.5 ETH each
-    appDefinition: appDefinition,
-    versionNumber: 1,
-    isFinal: false
-  }
-});
+function useCreateApplicationSession() {
+  const createApplicationSession = useCallback(
+    async (
+      signer,
+      sendRequest,
+      participantA,
+      participantB,
+      amount,
+      tokenAddress
+    ) => {
+      try {
+        // Convert amount to proper format if needed
+        const amountBigInt = Number(amount);
+        const zeroBigInt = 0;
 
-console.log('Application session created with ID:', sessionId);
-```
+        // Define the application parameters
+        const appDefinition = {
+          protocol: 'nitroliterpc',
+          participants: [participantA, participantB],
+          weights: [100, 0],  // Weight distribution for consensus
+          quorum: 100,        // Required consensus percentage
+          challenge: 0,       // Challenge period
+          nonce: Date.now(),  // Unique identifier
+        };
 
-## Application Types
+        // Define the initial intent (how funds are allocated)
+        const initialIntent = [amountBigInt, zeroBigInt];
 
-Nitrolite supports several built-in application types:
+        // Create a signed message using the createAppSessionMessage helper
+        const signedMessage = await createAppSessionMessage(
+          signer.sign,
+          [
+            {
+              definition: appDefinition,
+              token: tokenAddress,
+              allocations: [amountBigInt, zeroBigInt],
+            },
+          ],
+          initialIntent
+        );
 
-| Application Type | Description | Use Case |
-|-----------------|-------------|----------|
-| `SimplePayment` | Basic payment channel | One-way or two-way payments |
-| `TokenSwap` | Exchange of different tokens | Decentralized exchange |
-| `TicTacToe` | Simple game implementation | Gaming applications |
-| `LockRelease` | Time-locked transactions | Escrow services |
-| `CustomApp` | Custom application logic | Any specialized logic |
+        // Send the signed message to the ClearNode
+        const response = await sendRequest(signedMessage);
 
-## Custom Application Logic
+        // Handle the response
+        if (response && response[0] && response[0].app_id) {
+          // Store the app ID for future reference
+          localStorage.setItem('app_id', response[0].app_id);
+          return { success: true, app_id: response[0].app_id, response };
+        } else {
+          return { success: true, response };
+        }
+      } catch (error) {
+        console.error('Error creating application session:', error);
+        return {
+          success: false,
+          error: error instanceof Error
+            ? error.message
+            : 'Unknown error during session creation',
+        };
+      }
+    },
+    []
+  );
 
-For custom applications, you need to provide the application logic:
+  return { createApplicationSession };
+}
 
-```javascript
-()() Define a custom application with its own rules
-const customAppDefinition = {
-  type: 'CustomApp',
-  appData: {
-    name: 'MyCustomApp',
-    version: '1.0.0',
-  },
-  ()() Define state validation rules
-  validateState: (state, action) => {
-    ()() Custom validation logic
-    return isValidTransition(state, action);
-  },
-  ()() Define how to apply actions to the state
-  applyAction: (state, action) => {
-    ()() Custom state transition logic
-    return newState;
-  }
-};
-
-()() Register the custom application type
-client.registerApplicationType('CustomApp', {
-  validateState: customAppDefinition.validateState,
-  applyAction: customAppDefinition.applyAction
-});
-
-()() Create session with the custom app
-const customSessionId = await client.createApplicationSession({
-  channelId: channelId,
-  participants: ['0xYourAddress', '0xCounterpartyAddress'],
-  initialState: {
-    balances: ['500000000000000000', '500000000000000000'],
-    appDefinition: customAppDefinition,
-    versionNumber: 1,
-    isFinal: false
-  }
-});
-```
-
-## Waiting for Participants to Join
-
-All participants must agree to the initial state:
-
-```javascript
-()() Check if all participants have joined
-const isReady = await client.isApplicationSessionReady(sessionId);
-
-if (!isReady) {
-  console.log('Waiting for all participants to join...');
+// Usage example
+function MyComponent() {
+  const { createApplicationSession } = useCreateApplicationSession();
   
-  ()() Set up a listener for when the session is ready
-  client.on('applicationSessionReady', (readySessionId) => {
-    if (readySessionId === sessionId) {
-      console.log('All participants have joined! Session is ready.');
-      ()() Proceed with using the application session
-      startApplication(sessionId);
+  const handleCreateSession = async () => {
+    // Define your WebSocket send wrapper
+    const sendRequest = async (payload) => {
+      return new Promise((resolve, reject) => {
+        // Assuming ws is your WebSocket connection
+        const handleMessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.res && message.res[1] === 'create_app_session') {
+              ws.removeEventListener('message', handleMessage);
+              resolve(message.res[2]);
+            }
+          } catch (error) {
+            console.error('Error parsing message:', error);
+          }
+        };
+        
+        ws.addEventListener('message', handleMessage);
+        ws.send(payload);
+        
+        // Set timeout to prevent hanging
+        setTimeout(() => {
+          ws.removeEventListener('message', handleMessage);
+          reject(new Error('App session creation timeout'));
+        }, 10000);
+      });
+    };
+    
+    const result = await createApplicationSession(
+      walletSigner,      // Your signer object
+      sendRequest,       // Function to send the request
+      '0xYourAddress',   // Your address
+      '0xOtherAddress',  // Other participant's address
+      '1000000',         // Amount (in smallest units)
+      '0xTokenAddress'   // Token address
+    );
+    
+    if (result.success) {
+      console.log(`Application session created with ID: ${result.app_id}`);
+    } else {
+      console.error(`Failed to create application session: ${result.error}`);
     }
-  });
-} else {
-  console.log('Session is already ready!');
-  startApplication(sessionId);
+  };
+  
+  return (
+    <button onClick={handleCreateSession}>Create Application Session</button>
+  );
 }
 ```
 
-## Session State Management
+  </TabItem>
+  <TabItem value="angular" label="Angular">
 
-Once the session is created, you can check its current state:
+```typescript
+// app-session.service.ts
+import { Injectable } from '@angular/core';
+import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+import { BehaviorSubject, Observable, from } from 'rxjs';
+import { tap, catchError } from 'rxjs/operators';
 
-```javascript
-()() Get the current application state
-const appState = await client.getApplicationState(sessionId);
-console.log('Current application state:', appState);
+@Injectable({
+  providedIn: 'root'
+})
+export class AppSessionService {
+  private webSocket: WebSocket | null = null;
+  private appIdSubject = new BehaviorSubject<string | null>(null);
+  
+  public appId$ = this.appIdSubject.asObservable();
+  
+  constructor() {
+    // Retrieve app ID from storage if available
+    const storedAppId = localStorage.getItem('app_id');
+    if (storedAppId) {
+      this.appIdSubject.next(storedAppId);
+    }
+  }
+  
+  public setWebSocket(ws: WebSocket): void {
+    this.webSocket = ws;
+  }
+  
+  public createApplicationSession(
+    signer: any,
+    participantA: string,
+    participantB: string,
+    amount: string,
+    tokenAddress: string
+  ): Observable<any> {
+    if (!this.webSocket) {
+      throw new Error('WebSocket connection is not established');
+    }
+    
+    return from(this.createAppSessionAsync(
+      signer,
+      participantA,
+      participantB,
+      amount,
+      tokenAddress
+    )).pipe(
+      tap(result => {
+        if (result.success && result.app_id) {
+          localStorage.setItem('app_id', result.app_id);
+          this.appIdSubject.next(result.app_id);
+        }
+      }),
+      catchError(error => {
+        console.error('Error creating application session:', error);
+        throw error;
+      })
+    );
+  }
+  
+  private async createAppSessionAsync(
+    signer: any,
+    participantA: string,
+    participantB: string,
+    amount: string,
+    tokenAddress: string
+  ): Promise<any> {
+    try {
+      // Convert amount to proper format
+      const amountValue = Number(amount);
+      const zeroValue = 0;
+      
+      // Define the application parameters
+      const appDefinition = {
+        protocol: 'nitroliterpc',
+        participants: [participantA, participantB],
+        weights: [100, 0],
+        quorum: 100,
+        challenge: 0,
+        nonce: Date.now(),
+      };
+      
+      // Define the initial intent
+      const initialIntent = [amountValue, zeroValue];
+      
+      // Create message signer function
+      const messageSigner = async (payload: any) => {
+        const message = JSON.stringify(payload);
+        const digestHex = ethers.id(message);
+        const messageBytes = ethers.getBytes(digestHex);
+        const signature = await signer.signMessage(messageBytes);
+        return signature;
+      };
+      
+      // Create the signed message
+      const signedMessage = await createAppSessionMessage(
+        messageSigner,
+        [
+          {
+            definition: appDefinition,
+            token: tokenAddress,
+            allocations: [amountValue, zeroValue],
+          },
+        ],
+        initialIntent
+      );
+      
+      // Send the message and wait for response
+      return await this.sendRequest(signedMessage);
+    } catch (error) {
+      console.error('Error in createAppSessionAsync:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
+  }
+  
+  private sendRequest(payload: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!this.webSocket) {
+        reject(new Error('WebSocket not connected'));
+        return;
+      }
+      
+      const handleMessage = (event: MessageEvent) => {
+        try {
+          const message = JSON.parse(event.data);
+          if (message.res && message.res[1] === 'create_app_session') {
+            this.webSocket?.removeEventListener('message', handleMessage);
+            resolve({
+              success: true,
+              app_id: message.res[2]?.[0]?.app_id || null,
+              status: message.res[2]?.[0]?.status || "open",
+              response: message.res[2]
+            });
+          }
+          
+          if (message.err) {
+            this.webSocket?.removeEventListener('message', handleMessage);
+            reject(new Error(`Error: ${message.err[1]} - ${message.err[2]}`));
+          }
+        } catch (error) {
+          console.error('Error parsing message:', error);
+        }
+      };
+      
+      this.webSocket.addEventListener('message', handleMessage);
+      this.webSocket.send(payload);
+      
+      // Set timeout to prevent hanging
+      setTimeout(() => {
+        this.webSocket?.removeEventListener('message', handleMessage);
+        reject(new Error('App session creation timeout'));
+      }, 10000);
+    });
+  }
+}
 
-()() Check if the session is still active
-const isActive = await client.isApplicationSessionActive(sessionId);
-console.log(`Session is ${isActive ? 'active' : 'inactive'}`);
+// app-session.component.ts
+import { Component, OnInit } from '@angular/core';
+import { AppSessionService } from './app-session.service';
+
+@Component({
+  selector: 'app-session-creator',
+  template: `
+    <div class="app-session-container">
+      <h3>Create Application Session</h3>
+      <div *ngIf="appId">
+        Current Application Session ID: {{ appId }}
+      </div>
+      <button (click)="createAppSession()" [disabled]="isCreating">
+        {{ isCreating ? 'Creating...' : 'Create Application Session' }}
+      </button>
+      <div *ngIf="error" class="error-message">
+        {{ error }}
+      </div>
+    </div>
+  `,
+  styles: [`
+    .app-session-container {
+      margin: 20px;
+      padding: 15px;
+      border: 1px solid #eee;
+      border-radius: 5px;
+    }
+    .error-message {
+      color: red;
+      margin-top: 10px;
+    }
+  `]
+})
+export class AppSessionComponent implements OnInit {
+  appId: string | null = null;
+  isCreating = false;
+  error: string | null = null;
+  
+  constructor(private appSessionService: AppSessionService) {}
+  
+  ngOnInit(): void {
+    // Subscribe to app ID changes
+    this.appSessionService.appId$.subscribe(id => {
+      this.appId = id;
+    });
+    
+    // Initialize WebSocket (implementation would depend on your setup)
+    const ws = new WebSocket('wss://your-clearnode-endpoint');
+    ws.onopen = () => {
+      this.appSessionService.setWebSocket(ws);
+    };
+  }
+  
+  createAppSession(): void {
+    this.isCreating = true;
+    this.error = null;
+    
+    // Sample values - in a real app you'd get these from input fields or a service
+    const participantA = '0xYourAddress';
+    const participantB = '0xOtherAddress';
+    const amount = '1000000'; // 1 USDC with 6 decimals
+    const tokenAddress = '0xTokenAddress';
+    
+    // Assuming you have access to a signer (e.g., from MetaMask)
+    const signer = window.ethereum && new ethers.providers.Web3Provider(window.ethereum).getSigner();
+    
+    if (!signer) {
+      this.error = 'No wallet connected';
+      this.isCreating = false;
+      return;
+    }
+    
+    this.appSessionService.createApplicationSession(
+      signer,
+      participantA,
+      participantB,
+      amount,
+      tokenAddress
+    ).subscribe({
+      next: (result) => {
+        console.log('App session created:', result);
+        this.isCreating = false;
+      },
+      error: (err) => {
+        this.error = `Failed to create application session: ${err.message}`;
+        this.isCreating = false;
+      }
+    });
+  }
+}
 ```
 
-## Application Session Lifecycle
+  </TabItem>
+  <TabItem value="vue" label="Vue.js">
 
-A typical application session follows this lifecycle:
+```javascript
+<!-- AppSessionManager.vue -->
+<template>
+  <div class="app-session-manager">
+    <h3>Application Session</h3>
+    
+    <div v-if="appId" class="current-session">
+      <p>Current session ID: {{ appId }}</p>
+    </div>
+    
+    <div class="create-session">
+      <button 
+        @click="createAppSession" 
+        :disabled="isCreating || !isConnected"
+      >
+        {{ isCreating ? 'Creating...' : 'Create Application Session' }}
+      </button>
+      
+      <div v-if="error" class="error-message">
+        {{ error }}
+      </div>
+      
+      <div v-if="!isConnected" class="warning-message">
+        WebSocket not connected to ClearNode
+      </div>
+    </div>
+  </div>
+</template>
 
-1. **Creation**: Define initial state and participants
-2. **Initialization**: All participants join and sign the initial state
-3. **Active State**: Participants exchange state updates and transactions
-4. **Finalization**: Session is concluded and final state is signed
-5. **Closure**: Session data is stored for potential dispute resolution
+<script>
+import { defineComponent, ref, onMounted, onUnmounted } from 'vue';
+import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+
+export default defineComponent({
+  name: 'AppSessionManager',
+  
+  setup() {
+    const appId = ref(localStorage.getItem('app_id') || null);
+    const isCreating = ref(false);
+    const error = ref(null);
+    const isConnected = ref(false);
+    let webSocket = null;
+    
+    onMounted(() => {
+      // Initialize WebSocket connection
+      initWebSocket();
+    });
+    
+    onUnmounted(() => {
+      // Clean up WebSocket connection
+      if (webSocket) {
+        webSocket.close();
+      }
+    });
+    
+    const initWebSocket = () => {
+      webSocket = new WebSocket('wss://your-clearnode-endpoint');
+      
+      webSocket.onopen = () => {
+        isConnected.value = true;
+        console.log('WebSocket connected to ClearNode');
+      };
+      
+      webSocket.onclose = () => {
+        isConnected.value = false;
+        console.log('WebSocket disconnected from ClearNode');
+      };
+      
+      webSocket.onerror = (e) => {
+        isConnected.value = false;
+        error.value = 'WebSocket connection error';
+        console.error('WebSocket error:', e);
+      };
+    };
+    
+    const createAppSession = async () => {
+      if (!isConnected.value || !webSocket) {
+        error.value = 'WebSocket not connected';
+        return;
+      }
+      
+      try {
+        isCreating.value = true;
+        error.value = null;
+        
+        // Get Ethereum provider and signer
+        if (!window.ethereum) {
+          throw new Error('No Ethereum provider found');
+        }
+        
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        
+        // Use a sample counterparty address and token
+        const participantA = address;
+        const participantB = '0xOtherAddress';
+        const amount = '1000000'; // 1 USDC with 6 decimals
+        const tokenAddress = '0xTokenAddress';
+        
+        // Define app session parameters
+        const appDefinition = {
+          protocol: 'nitroliterpc',
+          participants: [participantA, participantB],
+          weights: [100, 0],
+          quorum: 100,
+          challenge: 0,
+          nonce: Date.now(),
+        };
+        
+        // Convert amount
+        const amountValue = Number(amount);
+        const zeroValue = 0;
+        
+        // Define initial intent
+        const initialIntent = [amountValue, zeroValue];
+        
+        // Message signer function
+        const messageSigner = async (payload) => {
+          const message = JSON.stringify(payload);
+          const digestHex = ethers.id(message);
+          const messageBytes = ethers.getBytes(digestHex);
+          return await signer.signMessage(messageBytes);
+        };
+        
+        // Create signed message
+        const signedMessage = await createAppSessionMessage(
+          messageSigner,
+          [
+            {
+              definition: appDefinition,
+              token: tokenAddress,
+              allocations: [amountValue, zeroValue],
+            },
+          ],
+          initialIntent
+        );
+        
+        // Send message and handle response
+        const response = await sendWebSocketRequest(signedMessage);
+        
+        if (response.success && response.app_id) {
+          appId.value = response.app_id;
+          localStorage.setItem('app_id', response.app_id);
+          console.log('Application session created successfully:', response.app_id);
+        } else {
+          console.warn('Session created but no app_id returned:', response);
+        }
+      } catch (err) {
+        error.value = err.message || 'Error creating application session';
+        console.error('Failed to create application session:', err);
+      } finally {
+        isCreating.value = false;
+      }
+    };
+    
+    const sendWebSocketRequest = (payload) => {
+      return new Promise((resolve, reject) => {
+        const handleMessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            
+            if (message.res && message.res[1] === 'create_app_session') {
+              webSocket.removeEventListener('message', handleMessage);
+              
+              const appSessionId = message.res[2]?.[0]?.app_id;
+              const status = message.res[2]?.[0]?.status || "open";
+              resolve({
+                success: true,
+                app_id: appSessionId,
+                status: status,
+                response: message.res[2]
+              });
+            }
+            
+            if (message.err) {
+              webSocket.removeEventListener('message', handleMessage);
+              reject(new Error(`Error: ${message.err[1]} - ${message.err[2]}`));
+            }
+          } catch (error) {
+            console.error('Error parsing message:', error);
+          }
+        };
+        
+        webSocket.addEventListener('message', handleMessage);
+        webSocket.send(payload);
+        
+        // Set timeout to prevent hanging
+        setTimeout(() => {
+          webSocket.removeEventListener('message', handleMessage);
+          reject(new Error('App session creation timeout'));
+        }, 10000);
+      });
+    };
+    
+    return {
+      appId,
+      isCreating,
+      error,
+      isConnected,
+      createAppSession
+    };
+  }
+});
+</script>
+
+<style scoped>
+.app-session-manager {
+  padding: 20px;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+.current-session {
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+}
+.error-message {
+  color: #d32f2f;
+  margin-top: 10px;
+}
+.warning-message {
+  color: #f57c00;
+  margin-top: 10px;
+}
+button {
+  padding: 8px 16px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:disabled {
+  background-color: #bbdefb;
+  cursor: not-allowed;
+}
+</style>
+```
+
+  </TabItem>
+  <TabItem value="nodejs" label="Node.js">
+
+```javascript
+import { createAppSessionMessage } from '@erc7824/nitrolite';
+import WebSocket from 'ws';
+import { ethers } from 'ethers';
+
+/**
+ * Create an app session
+ * @param {string} participantA - First participant's address
+ * @param {string} participantB - Second participant's address
+ * @param {WebSocket} ws - WebSocket connection to the ClearNode
+ * @param {object} wallet - Ethers wallet for signing
+ * @param {string} tokenAddress - The token address for the session
+ * @returns {Promise<string>} The app session ID
+ */
+async function createAppSession(participantA, participantB, ws, wallet, tokenAddress) {
+  try {
+    console.log(`Creating app session between ${participantA} and ${participantB}`);
+    
+    // Message signer function
+    const messageSigner = async (payload) => {
+      try {
+        const message = JSON.stringify(payload);
+        const digestHex = ethers.id(message);
+        const messageBytes = ethers.getBytes(digestHex);
+        const { serialized: signature } = wallet.signingKey.sign(messageBytes);
+        return signature;
+      } catch (error) {
+        console.error("Error signing message:", error);
+        throw error;
+      }
+    };
+    
+    // Create app definition
+    const appDefinition = {
+      protocol: "nitroliterpc",
+      participants: [participantA, participantB],
+      weights: [100, 0],
+      quorum: 100,
+      challenge: 0,
+      nonce: Date.now(),
+    };
+    
+    // Initial allocations and intent (e.g., 1 USDC with 6 decimals)
+    const amount = 1000000;
+    const initialIntent = [amount, 0];
+    
+    // Create the signed message
+    const signedMessage = await createAppSessionMessage(
+      messageSigner,
+      [
+        {
+          definition: appDefinition,
+          token: tokenAddress,
+          allocations: [amount, 0],
+        },
+      ],
+      initialIntent
+    );
+    
+    // Send the message and wait for response
+    return new Promise((resolve, reject) => {
+      // Create a one-time message handler for the app session response
+      const handleAppSessionResponse = (data) => {
+        try {
+          const rawData = typeof data === 'string' ? data : data.toString();
+          const message = JSON.parse(rawData);
+          
+          console.log('Received app session creation response:', message);
+          
+          // Check if this is an app session response
+          if (message.res && 
+              (message.res[1] === 'create_app_session' || 
+               message.res[1] === 'app_session_created')) {
+            // Remove the listener once we get the response
+            ws.removeListener('message', handleAppSessionResponse);
+            
+            // Extract app ID from response
+            const appId = message.res[2]?.[0]?.app_id;
+            if (!appId) {
+              reject(new Error('Failed to get app ID from response'));
+              return;
+            }
+            
+            resolve(appId);
+          }
+          
+          // Check for error responses
+          if (message.err) {
+            ws.removeListener('message', handleAppSessionResponse);
+            reject(new Error(`Error ${message.err[1]}: ${message.err[2]}`));
+          }
+        } catch (error) {
+          console.error('Error handling app session response:', error);
+        }
+      };
+      
+      // Add the message handler
+      ws.on('message', handleAppSessionResponse);
+      
+      // Set timeout to prevent hanging
+      setTimeout(() => {
+        ws.removeListener('message', handleAppSessionResponse);
+        reject(new Error('App session creation timeout'));
+      }, 10000);
+      
+      // Send the signed message
+      ws.send(signedMessage);
+    });
+  } catch (error) {
+    console.error('Error creating app session:', error);
+    throw error;
+  }
+}
+
+// Usage example
+const participantA = '0x1234...';  // Your address
+const participantB = '0x5678...';  // Other participant's address
+const tokenAddress = '0xUSdC...';  // Token address
+
+// Assuming you have a WebSocket connection and wallet initialized
+createAppSession(participantA, participantB, ws, wallet, tokenAddress)
+  .then(appId => {
+    console.log(`Application session created with ID: ${appId}`);
+    // Store the app ID for future reference
+  })
+  .catch(error => {
+    console.error('Failed to create application session:', error);
+  });
+```
+
+  </TabItem>
+  <TabItem value="server" label="Server with Multiple Players">
+
+```javascript
+/**
+ * Nitrolite app sessions manager for game rooms
+ */
+import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+
+// Map to store app sessions by room ID
+const roomAppSessions = new Map();
+
+/**
+ * Create an app session for a game room
+ * @param {string} roomId - Room ID
+ * @param {string} participantA - First player's address
+ * @param {string} participantB - Second player's address
+ * @param {WebSocket} ws - WebSocket connection to the ClearNode
+ * @param {object} wallet - Ethers wallet for signing
+ * @returns {Promise<string>} The app session ID
+ */
+export async function createAppSession(roomId, participantA, participantB, ws, wallet) {
+  try {
+    console.log(`Creating app session for room ${roomId}`);
+    
+    // Get the server's address
+    const serverAddress = wallet.address;
+    
+    // Use a specific token (e.g., USDC)
+    const tokenAddress = process.env.USDC_TOKEN_ADDRESS;
+    if (!tokenAddress) {
+      throw new Error('Token address not set in environment variables');
+    }
+    
+    // Create app definition with server as a participant
+    // In this setup, the server acts as a referee/facilitator
+    const appDefinition = {
+      protocol: "app_nitrolite_v0",
+      participants: [participantA, participantB, serverAddress],
+      weights: [0, 0, 100],  // Server has full control
+      quorum: 100,
+      challenge: 0,
+      nonce: Date.now(),
+    };
+    
+    // Initial allocations (starting with zero balances)
+    const initialIntent = [0, 0, 0];
+    
+    // Message signer function
+    const messageSigner = async (payload) => {
+      try {
+        const message = JSON.stringify(payload);
+        const digestHex = ethers.id(message);
+        const messageBytes = ethers.getBytes(digestHex);
+        const { serialized: signature } = wallet.signingKey.sign(messageBytes);
+        return signature;
+      } catch (error) {
+        console.error("Error signing message:", error);
+        throw error;
+      }
+    };
+    
+    // Create the signed message
+    const signedMessage = await createAppSessionMessage(
+      messageSigner,
+      [
+        {
+          definition: appDefinition,
+          token: tokenAddress,
+          allocations: [0, 0, 0],
+        },
+      ],
+      initialIntent
+    );
+    
+    // Send the message and wait for response
+    return new Promise((resolve, reject) => {
+      // Create a one-time message handler for the app session response
+      const handleAppSessionResponse = (data) => {
+        try {
+          const rawData = typeof data === 'string' ? data : data.toString();
+          const message = JSON.parse(rawData);
+          
+          console.log('Received app session creation response:', message);
+          
+          // Check if this is an app session response
+          if (message.res && 
+              (message.res[1] === 'create_app_session' || 
+               message.res[1] === 'app_session_created')) {
+            // Remove the listener once we get the response
+            ws.removeListener('message', handleAppSessionResponse);
+            
+            // Extract app ID from response
+            const appId = message.res[2]?.[0]?.app_id;
+            if (!appId) {
+              reject(new Error('Failed to get app ID from response'));
+              return;
+            }
+            
+            // Get status from response
+            const status = message.res[2]?.[0]?.status || "open";
+            
+            // Store the app session for this room
+            roomAppSessions.set(roomId, {
+              appId,
+              status,
+              participantA,
+              participantB,
+              serverAddress,
+              tokenAddress,
+              createdAt: Date.now()
+            });
+            
+            resolve(appId);
+          }
+          
+          // Check for error responses
+          if (message.err) {
+            ws.removeListener('message', handleAppSessionResponse);
+            reject(new Error(`Error ${message.err[1]}: ${message.err[2]}`));
+          }
+        } catch (error) {
+          console.error('Error handling app session response:', error);
+        }
+      };
+      
+      // Add the message handler
+      ws.on('message', handleAppSessionResponse);
+      
+      // Set timeout to prevent hanging
+      setTimeout(() => {
+        ws.removeListener('message', handleAppSessionResponse);
+        reject(new Error('App session creation timeout'));
+      }, 10000);
+      
+      // Send the signed message
+      ws.send(signedMessage);
+    });
+  } catch (error) {
+    console.error(`Error creating app session for room ${roomId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Get the app session for a room
+ * @param {string} roomId - Room ID
+ * @returns {Object|null} The app session or null if not found
+ */
+export function getAppSession(roomId) {
+  return roomAppSessions.get(roomId) || null;
+}
+
+/**
+ * Check if a room has an app session
+ * @param {string} roomId - Room ID
+ * @returns {boolean} Whether the room has an app session
+ */
+export function hasAppSession(roomId) {
+  return roomAppSessions.has(roomId);
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Key Components of an Application Session
+
+When creating an application session, you need to define several key components:
+
+| Component | Description | Example |
+|-----------|-------------|---------|
+| **Protocol** | Identifier for the application protocol | `"nitroliterpc"` |
+| **Participants** | Array of participant addresses | `[userAddress, counterpartyAddress]` |
+| **Weights** | Weight distribution for consensus | `[100, 0]` for user-controlled, `[50, 50]` for equal |
+| **Quorum** | Required percentage for consensus | Usually `100` for full consensus |
+| **Challenge** | Time period for disputing state | `0` for no challenge period |
+| **Nonce** | Unique identifier | Typically `Date.now()` |
+| **Token** | The token address for the session | Address of USDC, ETH, etc. |
+| **Allocations** | Initial fund distribution | `[amount, 0]` for one-way funding |
+| **Intent** | Intended final distribution | Same as allocations for initial setup |
+
+### Response Components
+
+When a ClearNode responds to your application session creation request, it provides:
+
+| Component | Description | Example |
+|-----------|-------------|---------|
+| **app_id** | Unique identifier for the application session | `"0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79"` |
+| **status** | Current state of the application session | `"open"` |
+
+## Understanding the Response
+
+When you create an application session, the ClearNode responds with information about the created session:
+
+```javascript
+// Example response
+{
+  "res": [
+    2,                // Request ID
+    "create_app_session", // Method name
+    [
+      {
+        "app_id": "0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79", // Session ID
+        "status": "open"
+      }
+    ],
+    1631234567890    // Timestamp
+  ],
+  "sig": ["0xSignature"]
+}
+```
+
+The most important part of the response is the `app_id`, which you'll need for all future interactions with this application session.
+
+## Application Session Use Cases
+
+Application sessions can be used for various scenarios:
+
+1. **Peer-to-peer payments**: Direct token transfers between users
+2. **Gaming**: Turn-based games with state transitions
+3. **Content access**: Pay-per-use access to digital content
+4. **Service payments**: Metered payment for API or service usage
+5. **Multi-party applications**: Applications involving more than two participants
+
+## Best Practices
+
+When working with application sessions, follow these best practices:
+
+1. **Store the app_id securely**: You'll need it for all session-related operations
+2. **Verify session creation**: Check for successful creation before proceeding
+3. **Handle timeouts**: Implement proper timeout handling for session creation
+4. **Clean up listeners**: Always remove message event listeners to prevent memory leaks
+5. **Handle errors gracefully**: Provide clear error messages to users
 
 ## Next Steps
 
 After creating an application session, you can:
 
-1. [Execute transactions within the session]((application_session)#executing-transactions)
-2. [Monitor channel assets]((balances)) to track your balance
-3. [Close the application session]((close_session)) when you're finished
+1. Use the session for application-specific transactions
+2. [Check your channel balances](balances) to monitor funds
+3. [Close the application session](close_session) when you're done
 
-For advanced use cases, see our [Application Development Guide]((advanced)(application_development)).
+For advanced use cases, see our detailed documentation on [application workflows](advanced_topics).
