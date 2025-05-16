@@ -38,6 +38,14 @@
     --ifm-footer-title-color: var(--ifm-color-dark);
 }
 
+h1 {
+    font-size: 2.25em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
 a:not([class]):hover {
     text-decoration: underline;
 }
@@ -82,19 +90,23 @@ a:not([class]):hover {
     color: var(--ifm-alert-foreground-color);
 }
 
+.tabs__item {
+    margin-top: var(--ifm-list-item-margin);
+}
+
 @media (min-width: 1416px) {
     html.docs-doc-page .main-wrapper {
         align-self: center;
-        max-width: 1400px;
-        width: 1400px;
+        max-width: 82rem;
+        width: 82rem;
     }
 }
 
 .navbar .navbar__inner {
     margin: 0 auto;
-    max-width: 1360px;
+    max-width: 82rem;
 }
-
+/* 
 @media (min-width: 996px) {
     :root {
         --ifm-navbar-height: 0;
@@ -102,7 +114,7 @@ a:not([class]):hover {
     .navbar {
         display: none !important;
     }
-}
+} */
 
 details {
     margin-bottom: 1rem;
@@ -118,4 +130,61 @@ summary {
 
 details[open] summary {
     color: var(--ifm-color-primary);
+}
+
+/* Custom button styling */
+.custom-button {
+    background-color: #000;
+    color: #fff !important;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.custom-button:hover {
+    opacity: 0.85;
+    transform: translateY(-1px);
+    text-decoration: none;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.custom-button:active {
+    transform: translateY(0);
+}
+
+/* Dark mode button styling */
+[data-theme="dark"] .custom-button {
+    background-color: #fff;
+    color: #000 !important;
+    box-shadow: 0 2px 4px rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="dark"] .custom-button:hover {
+    box-shadow: 0 4px 8px rgba(255, 255, 255, 0.15);
+}
+
+/* Position navbar items with flexbox order */
+.navbar__items--right {
+    display: flex;
+}
+
+/* Give the theme toggle a lower order */
+.navbar__items--right > .dropdown {
+    order: 10;
+}
+
+/* Make sure search is first */
+.navbar__items--right > *:first-child {
+    order: 5;
+}
+
+/* Give our custom button the highest order to ensure it's last */
+.navbar__items--right > *:nth-child(3) {
+    order: 100;
 }

@@ -1,5 +1,5 @@
 ---
-sidebar_position: 2
+sidebar_position: 3
 title: NitroliteRPC
 description: Overview of the NitroliteRPC, its core logic, and links to detailed API and type definitions.
 keywords: [erc7824, statechannels, state channels, nitrolite, rpc, websockets, messaging, protocol]
