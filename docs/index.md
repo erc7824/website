@@ -55,11 +55,6 @@ The following guides will walk you through the complete lifecycle of state chann
     to="/quick_start/resize_channel"
   />
   <Card 
-    title="Challenge Channel"
-    description="Ensure fairness by initiating a challenge when counterparties are unresponsive or malicious."
-    to="/quick_start/challenge"
-  />
-  <Card 
     title="Close Channel"
     description="Properly shut down a state channel and settle the final state on-chain."
     to="/quick_start/close_channel"
