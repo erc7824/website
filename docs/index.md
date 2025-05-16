@@ -1,69 +1,61 @@
 ---
 sidebar_position: 1
-slug: /
-title: Introduction
-description: Create high-performance chain agnostic dApps using state channels
-keywords: [erc7824, statechannels, chain abstraction, chain agnostic, state channels, ethereum scaling, layer 2, layer 3, nitro, trading, high-speed]
-tags:
-  - erc7824
-  - docs
+title: Nitrolite
+description: Build scalable web3 applications with state channels using the Nitrolite.
+keywords: [erc7824, statechannels, state channels, nitrolite, ethereum scaling, layer 2, off-chain, javascript, typescript, sdk]
 ---
 
-# Inject Nitro in your Stack
+import { Card, CardGrid } from '@site/src/components/Card';
 
-Blockchain technology has introduced a paradigm shift in how digital assets and decentralized applications (dApps) operate. However, scalability, transaction costs, and cross-chain interoperability remain significant challenges. **ERC-7824** and the **Nitro Protocol** provide a solution by enabling **off-chain state channels**, allowing seamless and efficient transactions without compromising on security or performance.
+# Nitrolite SDK
 
-ERC-7824 defines a minimal, universal interface for state channel interactions without assuming any specific underlying chain, making it naturally chain agnostic. It abstracts away chain-specific details by specifying data structures and messaging formats that can be verified on any blockchain with basic smart contract capabilities. As a result, developers can rely on ERC-7824’s standard approach for off-chain interactions and dispute resolution across multiple L1 or L2 networks, preserving interoperability and reusability of state channel components in a wide range of environments.
+The Nitrolite SDK empowers developers to build high-performance, scalable web3 applications using state channels. It's designed to provide near-instant transactions and significantly improved user experiences by minimizing direct blockchain interactions.
 
-## Supercharging Web2/3 Applications
+The SDK is built with a framework-agnostic core, making it suitable for a wide range of JavaScript and TypeScript projects, whether you're working with React, Vue, Angular, Svelte, or other environments.
 
-The Nitro Protocol is designed to integrate effortlessly with **both Web2 and Web3 applications**. Whether operating in traditional infrastructure or leveraging blockchain ecosystems, developers can **enhance their software stack** with blockchain-grade security and efficiency without sacrificing speed or requiring major architectural changes.
+<CardGrid cols={2}>
+  <Card
+    title="NitroliteClient"
+    description="The primary client interface for managing and interacting with state channels."
+    to="./nitrolite_client" 
+  />
+  <Card
+    title="Nitrolite RPC"
+    description="The underlying real-time communication protocol for off-chain state channel messaging."
+    to="./nitrolite_rpc"
+  />
+</CardGrid>
 
-```mermaid
-quadrantChart
-    title Distributed system scaling
-    x-axis Low Speed --> High Speed
-    y-axis Low Trust --> High Trust
-    quadrant-1 Network Overlay
-    quadrant-2 Decentralized Systems
-    quadrant-3 Cross-chain Systems
-    quadrant-4 Centralized Systems
-    Bitcoin: [0.20, 0.8]
-    L2 Chains: [0.57, 0.70]
-    L3 Nitro: [0.75, 0.60]
-    ClearSync: [0.80, 0.85]
-    Solana: [0.60, 0.42]
-    TradFi: [0.85, 0.34]
-    CEX: [0.70, 0.20]
-    Bridges: [0.24, 0.24]
-    Cross-chain Messaging: [0.15, 0.40]
-    Ethereum: [0.35, 0.78]
+## Getting Started
+
+- **Instant Transactions**: Off-chain operations mean no waiting for block confirmations.
+- **Minimal Gas Fees**: On-chain gas is primarily for channel opening and settlement.
+- **High Throughput**: Capable of handling thousands of transactions per second.
+- **Application Flexibility**: Ideal for games, payment systems, real-time interactions, and more.
+
+To begin using the Nitrolite SDK in your project:
+
+```bash
+npm install @erc7824/nitrolite
+# or
+yarn add @erc7824/nitrolite
+# or
+pnpm add @erc7824/nitrolite
 ```
 
-## Key Benefits of ERC-7824 and Nitro Protocol
+## Core SDK Architecture
 
-1. **Scalability Without Congestion**  
-   By moving most interactions off-chain and leveraging **state channels**, Nitro enables **near-instant, gas-free transactions**, reducing load on the base layer blockchain.
+The Nitrolite SDK is designed with modularity and broad compatibility in mind:
 
-2. **Cost Efficiency**  
-   Users and applications **avoid high gas fees** by settling transactions off-chain while maintaining an on-chain fallback for dispute resolution.
+1.  **NitroliteClient**: This is the main entry point for developers. It provides a high-level API to manage the lifecycle of state channels, including deposits, channel creation, application session management, and withdrawals.
+2.  **Nitrolite RPC**: This component handles the secure, real-time, off-chain communication between channel participants and the broker. It's responsible for message signing, verification, and routing.
 
-3. **Chain Agnosticism & Interoperability**  
-   ERC-7824 is designed to be **cross-chain compatible**, allowing seamless **interactions between different blockchain ecosystems**. This enables **cross-chain asset transfers, atomic swaps, and multi-chain smart contract execution**.
+## Key Concepts
 
-4. **Security & Trustless Execution**  
-   - Transactions occur off-chain but remain **cryptographically signed and enforceable** on-chain.
-   - **ForceMove** dispute resolution mechanism ensures that **malicious actors cannot manipulate state transitions**.
+Understanding these concepts is fundamental to working with Nitrolite:
 
-5. **Modular & Flexible**  
-   The protocol provides **plug-and-play interfaces**, allowing developers to build **custom business logic** while ensuring compatibility with the ERC-7824 framework.
-
-6. **Real-World Applications**  
-   - **DeFi Scaling:** Enables off-chain transactions and batch settlements for **DEXs and lending protocols**.  
-   - **Gaming & Metaverse:** Supports **high-speed microtransactions** for in-game economies.  
-   - **Cross-Chain Payments:** Facilitates **low-cost, instant remittances and global transactions**.  
-   - **Enterprise & Supply Chain:** Enhances **multi-party agreements and digital asset settlement**.
-
-## Summary
-
-ERC-7824 and the Nitro Protocol provide the **next-generation infrastructure** for decentralized applications, bridging the gap between **legacy systems and blockchain**. By combining **off-chain speed** with **on-chain security**, this framework allows developers to build high-performance, scalable solutions without being tied to a single blockchain network.
+- **State Channels**: Off-chain mechanisms where participants can transact freely and securely, with the underlying blockchain ensuring the finality and security of funds.
+- **Channel Lifecycle**: The typical flow involves depositing funds into a custody contract, creating a channel, performing off-chain operations within an application session, closing the channel, and withdrawing funds.
+- **Intent-Based State**: State transitions are driven by cryptographically signed "intents" that propose changes to allocations or application state.
+- **Authentication**: Secure identity verification is achieved through cryptographic signatures, ensuring all actions are authorized.
+- **Application Sessions**: Specific instances of an application logic running within a state channel, defined by participants, rules, and initial state.
