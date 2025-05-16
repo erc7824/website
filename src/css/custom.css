@@ -90,7 +90,7 @@ a:not([class]):hover {
     color: var(--ifm-alert-foreground-color);
 }
 
-.tabs__item .tabItem_LNqP {
+.tabs__item {
     margin-top: var(--ifm-list-item-margin);
 }
 
