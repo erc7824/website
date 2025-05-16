@@ -1,224 +1,445 @@
 ---
 sidebar_position: 12
 title: Withdrawal
-description: Reclaim your funds from the state channel contract after channel closure.
-keywords: [erc7824, nitrolite, withdrawal, state channels, custody contract]
+description: Reclaim your funds from the custody contract that aren't locked in active channels.
+keywords: [erc7824, nitrolite, withdrawal, state channels, custody contract, tokens]
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 # Withdrawal
 
-After a channel is closed, you need to withdraw your funds from the custody contract. This guide explains the withdrawal process and how to safely retrieve your assets.
+The `withdrawal` method allows you to withdraw tokens that were previously deposited into the custody contract but are not currently locked in active channels. This guide explains how to use this method to reclaim your available funds.
 
-## Understanding Withdrawals
+## Understanding Withdrawals in Nitrolite
 
-When a state channel is closed, the final state is settled on-chain, but funds remain in the custody contract until explicitly withdrawn. The withdrawal process:
+In Nitrolite, your funds generally exist in two states:
 
-- Transfers your entitled funds from the custody contract to your wallet
-- Requires an on-chain transaction with gas fees
-- Can be performed any time after channel closure
-- Is the final step in the state channel lifecycle
+1. **Locked in active channels**: Funds that are currently allocated to state channels
+2. **Available in custody**: Funds that have been deposited but are not allocated to any channel
+
+The `withdrawal` method specifically targets the second category - funds that are available in the custody contract but not locked in any active channel.
+
+## Method Signature
+
+```typescript
+/**
+ * Withdraws tokens previously deposited into the custody contract.
+ * This does not withdraw funds locked in active channels.
+ * @param amount The amount of tokens/ETH to withdraw.
+ * @returns The transaction hash.
+ */
+async withdrawal(amount: bigint): Promise<Hash> {
+    const tokenAddress = this.addresses.tokenAddress;
+
+    try {
+        return await this.nitroliteService.withdraw(tokenAddress, amount);
+    } catch (err) {
+        throw new Errors.ContractCallError("Failed to execute withdrawDeposit on contract", err as Error);
+    }
+}
+```
 
 ## Prerequisites for Withdrawal
 
-Before withdrawing funds, ensure:
+Before attempting to withdraw funds, ensure:
 
-1. The channel is properly closed
-2. The challenge period has ended (if applicable)
-3. The on-chain settlement is finalized
-4. You have the wallet connected that was used in the channel
+1. You have a properly initialized client (see [Initializing Client](initializing_client))
+2. You have non-zero available balance in the custody contract
+3. Your wallet is connected and has enough ETH for gas fees
 
-## Checking Withdrawal Availability
+## Checking Available Balance
 
-First, check if your funds are ready for withdrawal:
+Before withdrawing, check how much is available for withdrawal:
 
 ```javascript
-()() Get the channel ID
-const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+// Get account information, including available funds
+const accountInfo = await client.getAccountInfo();
 
-()() Check if withdrawal is available
-const isWithdrawalReady = await client.isWithdrawalReady(channelId);
-console.log(`Withdrawal ready: ${isWithdrawalReady ? 'Yes' : 'No'}`);
+// Display available funds (not locked in channels)
+console.log('Available for withdrawal:', accountInfo.available);
+console.log('Locked in channels:', accountInfo.locked);
 
-if (!isWithdrawalReady) {
-  ()() Check why withdrawal isn't ready
-  const channelStatus = await client.getChannelStatus(channelId);
-  console.log('Channel status:', channelStatus);
-  
-  if (channelStatus === 'challenged') {
-    const challengeDetails = await client.getChannelChallengeDetails(channelId);
-    console.log('Challenge period ends at:', new Date(challengeDetails.expirationTime * 1000).toLocaleString());
-  }
+// Check if withdrawal is possible
+if (accountInfo.available <= 0n) {
+  console.log('No funds available for withdrawal');
+  return;
 }
 ```
 
-## Checking Withdrawable Amounts
+## Basic Withdrawal Example
 
-Before withdrawing, check how much you're entitled to:
+Here's a simple example of withdrawing all available funds:
 
 ```javascript
-()() Get withdrawable amounts for all assets
-const withdrawableAssets = await client.getWithdrawableAssets(channelId);
+// Get account information
+const accountInfo = await client.getAccountInfo();
 
-console.log('Withdrawable assets:');
-for (const asset of withdrawableAssets) {
-  let symbol = asset.tokenAddress === '0x0000000000000000000000000000000000000000' 
-    ? 'ETH' 
-    : await client.getTokenSymbol(asset.tokenAddress);
-  
-  let formattedAmount = asset.tokenAddress === '0x0000000000000000000000000000000000000000'
-    ? ethers.utils.formatEther(asset.amount)
-    : ethers.utils.formatUnits(asset.amount, await client.getTokenDecimals(asset.tokenAddress));
-  
-  console.log(`- ${formattedAmount} ${symbol}`);
+// Ensure there are funds available to withdraw
+if (accountInfo.available <= 0n) {
+  console.log('No funds available for withdrawal');
+  return;
 }
-```
 
-## Withdrawing ETH
-
-To withdraw ETH from a closed channel:
-
-```javascript
-()() Withdraw ETH
 try {
-  const withdrawTx = await client.withdrawAssets({
-    channelId: channelId,
-    assetType: 'ETH',
-    recipient: client.getAddress(), ()() Your address
-  });
+  // Withdraw all available funds
+  const txHash = await client.withdrawal(accountInfo.available);
+  console.log('Withdrawal transaction submitted:', txHash);
   
-  console.log('Withdrawal transaction submitted:', withdrawTx.hash);
-  
-  ()() Wait for the transaction to be confirmed
-  const receipt = await withdrawTx.wait();
-  console.log('ETH withdrawal successful:', receipt.transactionHash);
-  
-  ()() Check your updated wallet balance
-  const newBalance = await client.getWalletBalance();
-  console.log('New wallet balance:', ethers.utils.formatEther(newBalance), 'ETH');
+  // Transaction hash can be used to check status on a block explorer
+  console.log(`View transaction: https://sepolia.etherscan.io/tx/${txHash}`);
 } catch (error) {
   console.error('Withdrawal failed:', error);
 }
 ```
 
-## Withdrawing ERC20 Tokens
+## Complete React Implementation
 
-For ERC20 tokens, the process is similar:
+Here's a more comprehensive implementation in a React component:
 
-```javascript
-()() Withdraw ERC20 tokens
-const tokenAddress = '0xAbCdEf1234567890AbCdEf1234567890AbCdEf12';
-const tokenSymbol = await client.getTokenSymbol(tokenAddress);
+<Tabs>
+  <TabItem value="react" label="React">
 
-try {
-  const tokenWithdrawTx = await client.withdrawAssets({
-    channelId: channelId,
-    assetType: 'ERC20',
-    tokenAddress: tokenAddress,
-    recipient: client.getAddress(), ()() Your address
-  });
+```jsx
+import { useEffect, useState, useCallback } from 'react';
+
+function WithdrawalComponent({ client }) {
+  const [accountInfo, setAccountInfo] = useState(null);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [txHash, setTxHash] = useState(null);
+  const [error, setError] = useState(null);
   
-  console.log(`${tokenSymbol} withdrawal transaction submitted:`, tokenWithdrawTx.hash);
+  // Function to fetch account information
+  const fetchAccountInfo = useCallback(async () => {
+    if (!client) return;
+    
+    try {
+      const info = await client.getAccountInfo();
+      setAccountInfo(info);
+    } catch (err) {
+      console.error('Failed to fetch account info:', err);
+      setError('Failed to load account information');
+    }
+  }, [client]);
   
-  ()() Wait for the transaction to be confirmed
-  const tokenReceipt = await tokenWithdrawTx.wait();
-  console.log(`${tokenSymbol} withdrawal successful:`, tokenReceipt.transactionHash);
+  // Load account info when component mounts or client changes
+  useEffect(() => {
+    fetchAccountInfo();
+  }, [client, fetchAccountInfo]);
   
-  ()() Check your updated token balance
-  const newTokenBalance = await client.getTokenBalance(tokenAddress);
-  const tokenDecimals = await client.getTokenDecimals(tokenAddress);
-  console.log(`New ${tokenSymbol} balance:`, ethers.utils.formatUnits(newTokenBalance, tokenDecimals));
-} catch (error) {
-  console.error(`${tokenSymbol} withdrawal failed:`, error);
+  // Function to handle withdrawal
+  const handleWithdrawal = async () => {
+    if (!client || !accountInfo) {
+      setError('Client not initialized or account info not loaded');
+      return;
+    }
+    
+    // Check if there are funds available to withdraw
+    if (!accountInfo.available || accountInfo.available <= 0n) {
+      setError('No funds available for withdrawal');
+      return;
+    }
+    
+    setIsWithdrawing(true);
+    setError(null);
+    setTxHash(null);
+    
+    try {
+      // Withdraw all available funds
+      const hash = await client.withdrawal(accountInfo.available);
+      setTxHash(hash);
+      console.log('Withdrawal transaction hash:', hash);
+      
+      // Refresh account info after withdrawal
+      await fetchAccountInfo();
+    } catch (err) {
+      setError(err.message);
+      console.error('Withdrawal failed:', err);
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+  
+  // Helper function to format bigint for display
+  const formatAmount = (amount) => {
+    if (!amount) return '0';
+    return (Number(amount) / 1e6).toFixed(6); // Assuming 6 decimals for USDC
+  };
+  
+  if (!client) {
+    return <div>Client not initialized</div>;
+  }
+  
+  return (
+    <div>
+      <h2>Withdraw Available Funds</h2>
+      
+      {accountInfo && (
+        <div>
+          <p>Available for withdrawal: {formatAmount(accountInfo.available)} USDC</p>
+          <p>Locked in channels: {formatAmount(accountInfo.locked)} USDC</p>
+        </div>
+      )}
+      
+      <button 
+        onClick={handleWithdrawal} 
+        disabled={
+          isWithdrawing || 
+          !accountInfo || 
+          !accountInfo.available || 
+          accountInfo.available <= 0n
+        }
+      >
+        {isWithdrawing ? 'Processing...' : 'Withdraw All Available Funds'}
+      </button>
+      
+      {txHash && (
+        <div>
+          <p>Transaction submitted: {txHash}</p>
+          <a 
+            href={`https://sepolia.etherscan.io/tx/${txHash}`} 
+            target="_blank" 
+            rel="noopener noreferrer"
+          >
+            View on Etherscan
+          </a>
+        </div>
+      )}
+      
+      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
+    </div>
+  );
 }
 ```
 
-## Withdrawing All Assets at Once
+  </TabItem>
+  <TabItem value="vue" label="Vue">
 
-For convenience, you can withdraw all assets at once:
+```vue
+<template>
+  <div>
+    <h2>Withdraw Available Funds</h2>
+    
+    <div v-if="accountInfo">
+      <p>Available for withdrawal: {{ formatAmount(accountInfo.available) }} USDC</p>
+      <p>Locked in channels: {{ formatAmount(accountInfo.locked) }} USDC</p>
+    </div>
+    
+    <button 
+      @click="handleWithdrawal" 
+      :disabled="isWithdrawing || !accountInfo || !accountInfo.available || accountInfo.available <= 0n"
+    >
+      {{ isWithdrawing ? 'Processing...' : 'Withdraw All Available Funds' }}
+    </button>
+    
+    <div v-if="txHash">
+      <p>Transaction submitted: {{ txHash }}</p>
+      <a 
+        :href="`https://sepolia.etherscan.io/tx/${txHash}`" 
+        target="_blank" 
+        rel="noopener noreferrer"
+      >
+        View on Etherscan
+      </a>
+    </div>
+    
+    <p v-if="error" style="color: red">Error: {{ error }}</p>
+  </div>
+</template>
 
-```javascript
-()() Withdraw all assets
-try {
-  const batchWithdrawTx = await client.withdrawAllAssets({
-    channelId: channelId,
-    recipient: client.getAddress(),
-  });
+<script>
+export default {
+  props: {
+    client: {
+      type: Object,
+      required: true
+    }
+  },
   
-  console.log('Batch withdrawal transaction submitted:', batchWithdrawTx.hash);
+  data() {
+    return {
+      accountInfo: null,
+      isWithdrawing: false,
+      txHash: null,
+      error: null
+    }
+  },
   
-  ()() Wait for the transaction to be confirmed
-  const batchReceipt = await batchWithdrawTx.wait();
-  console.log('All assets withdrawn successfully:', batchReceipt.transactionHash);
-} catch (error) {
-  console.error('Batch withdrawal failed:', error);
-}
-```
-
-## Verifying Withdrawal Completion
-
-After withdrawal, verify that all funds have been received:
-
-```javascript
-()() Check if there are any remaining funds to withdraw
-const remainingAssets = await client.getWithdrawableAssets(channelId);
-
-if (remainingAssets.length === 0) {
-  console.log('All assets have been successfully withdrawn');
-} else {
-  console.log('Some assets still need to be withdrawn:');
-  for (const asset of remainingAssets) {
-    console.log(`- ${asset.amount} ${asset.tokenAddress === '0x0000000000000000000000000000000000000000' ? 'ETH' : await client.getTokenSymbol(asset.tokenAddress)}`);
-  }
-}
-```
-
-## Troubleshooting Withdrawal Issues
-
-If you encounter issues with withdrawal:
-
-```javascript
-()() Check for common withdrawal issues
-async function troubleshootWithdrawal(channelId) {
-  ()() Check if channel is actually closed
-  const channelStatus = await client.getChannelStatus(channelId);
-  if (channelStatus !== 'closed') {
-    console.log(`Channel is not closed yet. Current status: ${channelStatus}`);
-    return;
-  }
+  methods: {
+    async fetchAccountInfo() {
+      if (!this.client) return;
+      
+      try {
+        this.accountInfo = await this.client.getAccountInfo();
+      } catch (err) {
+        console.error('Failed to fetch account info:', err);
+        this.error = 'Failed to load account information';
+      }
+    },
+    
+    async handleWithdrawal() {
+      if (!this.client || !this.accountInfo) {
+        this.error = 'Client not initialized or account info not loaded';
+        return;
+      }
+      
+      // Check if there are funds available to withdraw
+      if (!this.accountInfo.available || this.accountInfo.available <= 0n) {
+        this.error = 'No funds available for withdrawal';
+        return;
+      }
+      
+      this.isWithdrawing = true;
+      this.error = null;
+      this.txHash = null;
+      
+      try {
+        // Withdraw all available funds
+        this.txHash = await this.client.withdrawal(this.accountInfo.available);
+        console.log('Withdrawal transaction hash:', this.txHash);
+        
+        // Refresh account info after withdrawal
+        await this.fetchAccountInfo();
+      } catch (err) {
+        this.error = err.message;
+        console.error('Withdrawal failed:', err);
+      } finally {
+        this.isWithdrawing = false;
+      }
+    },
+    
+    formatAmount(amount) {
+      if (!amount) return '0';
+      return (Number(amount) / 1e6).toFixed(6); // Assuming 6 decimals for USDC
+    }
+  },
   
-  ()() Check if challenge period has ended
-  const hasPendingChallenge = await client.hasActiveChallenge(channelId);
-  if (hasPendingChallenge) {
-    const challengeDetails = await client.getChannelChallengeDetails(channelId);
-    console.log('Challenge period has not ended yet. Wait until:', new Date(challengeDetails.expirationTime * 1000).toLocaleString());
-    return;
-  }
+  mounted() {
+    this.fetchAccountInfo();
+  },
   
-  ()() Check if you have the correct wallet connected
-  const channelParticipants = await client.getChannelParticipants(channelId);
-  const connectedAddress = client.getAddress();
-  if (!channelParticipants.includes(connectedAddress)) {
-    console.log('You are not a participant in this channel. Please connect the correct wallet.');
-    return;
-  }
-  
-  ()() Check contract allowance for ERC20 tokens
-  const withdrawableAssets = await client.getWithdrawableAssets(channelId);
-  for (const asset of withdrawableAssets) {
-    if (asset.tokenAddress !== '0x0000000000000000000000000000000000000000') {
-      const allowance = await client.getContractAllowance(asset.tokenAddress);
-      console.log(`Allowance for ${await client.getTokenSymbol(asset.tokenAddress)}: ${allowance}`);
+  watch: {
+    client() {
+      this.fetchAccountInfo();
     }
   }
+}
+</script>
+```
+
+  </TabItem>
+</Tabs>
+
+## Handling Withdrawal in an Application
+
+For a more complete integration example, let's see how to implement this in a React component that might be part of a larger application:
+
+```jsx
+import { useCallback, useState } from 'react';
+
+function WithdrawalSection({ nitroSnap, walletSnap, isConnected, chainId }) {
+  const [loading, setLoading] = useState(false);
   
-  console.log('No obvious issues found. Please check your gas settings or contact support.');
+  // Function to refresh account information
+  const getAccountInfo = useCallback(async () => {
+    if (nitroSnap.client) {
+      return await nitroSnap.client.getAccountInfo();
+    }
+  }, [nitroSnap.client]);
+  
+  // Function to refresh participants information
+  const getParticipants = useCallback(async () => {
+    if (nitroSnap.client) {
+      return await nitroSnap.client.getParticipants();
+    }
+  }, [nitroSnap.client]);
+  
+  const handleWithdrawal = useCallback(async () => {
+    if (!isConnected || !walletSnap.walletAddress || !nitroSnap.client || !chainId) {
+      console.error('WebSocket not connected, wallet not connected, client not initialized, or no active chain');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      if (!nitroSnap.accountInfo?.available || nitroSnap.accountInfo.available <= 0n) {
+        console.warn('No funds to withdraw');
+        return;
+      }
+      
+      // Initiate withdrawal with available funds
+      const txHash = await nitroSnap.client.withdrawal(nitroSnap.accountInfo.available);
+      console.log('Withdrawal transaction hash:', txHash);
+      
+      // Refresh account and participants information after withdrawal
+      await Promise.all([getAccountInfo(), getParticipants()]);
+      
+      console.log('Withdrawal successful');
+    } catch (error) {
+      console.error('Withdrawal failed:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [
+    isConnected,
+    walletSnap.walletAddress,
+    nitroSnap.client,
+    nitroSnap.accountInfo,
+    chainId,
+    getAccountInfo,
+    getParticipants,
+  ]);
+  
+  return (
+    <div>
+      <h3>Withdraw Available Funds</h3>
+      
+      {nitroSnap.accountInfo && (
+        <p>
+          Available: {(Number(nitroSnap.accountInfo.available) / 1e6).toFixed(6)} USDC
+        </p>
+      )}
+      
+      <button 
+        onClick={handleWithdrawal}
+        disabled={
+          loading || 
+          !isConnected || 
+          !nitroSnap.client || 
+          !nitroSnap.accountInfo?.available || 
+          nitroSnap.accountInfo.available <= 0n
+        }
+      >
+        {loading ? 'Processing...' : 'Withdraw Funds'}
+      </button>
+    </div>
+  );
 }
 ```
+
+## Important Considerations
+
+1. **Distinction from Channel Funds**: The `withdrawal` method only affects funds that are available in the custody contract - it cannot withdraw funds that are locked in active channels. To access funds in channels, you must first close those channels.
+
+2. **Gas Costs**: Withdrawals are on-chain transactions that require gas fees. Ensure your wallet has enough ETH to cover these costs.
+
+3. **Transaction Confirmation**: The method returns a transaction hash immediately, but the actual withdrawal may take some time to be confirmed on the blockchain.
+
+4. **Error Handling**: Implement proper error handling as shown in the examples above. Withdrawals can fail for various reasons including:
+   - Insufficient gas
+   - Network congestion
+   - Contract reverts
+   - Wallet permissions
+
+5. **Amount Parameter**: The amount should be specified as a bigint value in the smallest unit of the token (e.g., for USDC with 6 decimals, 1 USDC = 1,000,000 units).
 
 ## Next Steps
 
-After successfully withdrawing all funds from a closed channel:
+After successfully withdrawing your available funds, you might want to:
 
-1. The channel lifecycle is complete - you can now create a new channel if needed
-2. You can check your wallet balances to confirm all funds have been received
-3. Consider reviewing the transaction history for your records
+1. [Close your channels](close_channel) if you still have funds locked in active channels
+2. [Create new channels](deposit_and_create_channel) with different parameters
+3. [Resize your existing channels](resize_channel) to adjust capacity
+
+For more detailed information about working with state channels, check the [Nitrolite Client Reference](../nitrolite_client) section.
