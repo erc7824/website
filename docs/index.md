@@ -1,61 +1,87 @@
 ---
 sidebar_position: 1
-title: Nitrolite
-description: Build scalable web3 applications with state channels using the Nitrolite.
+title: Introduction
+description: Build scalable web3 applications with state channels using Nitrolite.
 keywords: [erc7824, statechannels, state channels, nitrolite, ethereum scaling, layer 2, off-chain, javascript, typescript, sdk]
 ---
 
 import { Card, CardGrid } from '@site/src/components/Card';
 
-# Nitrolite SDK
+# Introduction
 
-The Nitrolite SDK empowers developers to build high-performance, scalable web3 applications using state channels. It's designed to provide near-instant transactions and significantly improved user experiences by minimizing direct blockchain interactions.
+Welcome to Nitrolite! Built on the ERC-7824 standard, Nitrolite is a powerful state channel framework that enables developers to build high-performance decentralized applications with near-instant finality and minimal gas costs.
 
-The SDK is built with a framework-agnostic core, making it suitable for a wide range of JavaScript and TypeScript projects, whether you're working with React, Vue, Angular, Svelte, or other environments.
+The following guides will walk you through the complete lifecycle of state channels in Nitrolite, from client initialization to channel creation, application sessions, and final settlement. Whether you're building payment systems, games, financial applications, or any use case requiring high-frequency transactions, Nitrolite provides the infrastructure you need.
 
 <CardGrid cols={2}>
-  <Card
-    title="NitroliteClient"
-    description="The primary client interface for managing and interacting with state channels."
-    to="./nitrolite_client" 
+  <Card 
+    title="Quick Start" 
+    description="Set up your first Nitrolite application with step-by-step instructions."
+    to="/quick_start"
   />
-  <Card
-    title="Nitrolite RPC"
-    description="The underlying real-time communication protocol for off-chain state channel messaging."
-    to="./nitrolite_rpc"
+  <Card 
+    title="Initialize the Client" 
+    description="Configure the Nitrolite client to access state channel functionality."
+    to="/quick_start/initializing_client"
+  />
+  <Card 
+    title="Deposit And Create Channel" 
+    description="Fund your state channel with assets and establish a secure connection between participants."
+    to="/quick_start/deposit_and_create_channel"
+  />
+  <Card 
+    title="Connect to the ClearNode" 
+    description="Establish connection with ClearNode for reliable off-chain transaction processing and verification."
+    to="/quick_start/connect_to_the_clearnode"
+  />
+  <Card 
+    title="Channel Assets" 
+    description="Monitor and manage the assets and allocations within your active state channels."
+    to="/quick_start/balances"
+  />
+  <Card 
+    title="Create Application Session" 
+    description="Initialize a new application instance within your channel"
+    to="/quick_start/application_session"
+  />
+  <Card 
+    title="Close Application Session" 
+    description="Properly finalize an application session while preserving final state and balances."
+    to="/quick_start/close_session"
+  />
+  <Card 
+    title="Resize Channel"
+    description="Adjust the funds locked in a channel to accommodate changing transaction requirements."
+    to="/quick_start/resize_channel"
+  />
+  <Card 
+    title="Challenge Channel"
+    description="Ensure fairness by initiating a challenge when counterparties are unresponsive or malicious."
+    to="/quick_start/challenge"
+  />
+  <Card 
+    title="Close Channel"
+    description="Properly shut down a state channel and settle the final state on-chain."
+    to="/quick_start/close_channel"
+  />
+  <Card 
+    title="Withdrawal"
+    description="Reclaim your funds from the state channel contract after channel closure."
+    to="/quick_start/withdrawal"
   />
 </CardGrid>
 
-## Getting Started
+## Key Features
 
 - **Instant Transactions**: Off-chain operations mean no waiting for block confirmations.
 - **Minimal Gas Fees**: On-chain gas is primarily for channel opening and settlement.
 - **High Throughput**: Capable of handling thousands of transactions per second.
 - **Application Flexibility**: Ideal for games, payment systems, real-time interactions, and more.
 
-To begin using the Nitrolite SDK in your project:
-
-```bash
-npm install @erc7824/nitrolite
-# or
-yarn add @erc7824/nitrolite
-# or
-pnpm add @erc7824/nitrolite
-```
-
 ## Core SDK Architecture
 
 The Nitrolite SDK is designed with modularity and broad compatibility in mind:
 
-1.  **NitroliteClient**: This is the main entry point for developers. It provides a high-level API to manage the lifecycle of state channels, including deposits, channel creation, application session management, and withdrawals.
-2.  **Nitrolite RPC**: This component handles the secure, real-time, off-chain communication between channel participants and the broker. It's responsible for message signing, verification, and routing.
+1. **NitroliteClient**: This is the main entry point for developers. It provides a high-level API to manage the lifecycle of state channels, including deposits, channel creation, application session management, and withdrawals.
 
-## Key Concepts
-
-Understanding these concepts is fundamental to working with Nitrolite:
-
-- **State Channels**: Off-chain mechanisms where participants can transact freely and securely, with the underlying blockchain ensuring the finality and security of funds.
-- **Channel Lifecycle**: The typical flow involves depositing funds into a custody contract, creating a channel, performing off-chain operations within an application session, closing the channel, and withdrawing funds.
-- **Intent-Based State**: State transitions are driven by cryptographically signed "intents" that propose changes to allocations or application state.
-- **Authentication**: Secure identity verification is achieved through cryptographic signatures, ensuring all actions are authorized.
-- **Application Sessions**: Specific instances of an application logic running within a state channel, defined by participants, rules, and initial state.
+2. **Nitrolite RPC**: This component handles the secure, real-time, off-chain communication between channel participants and the broker. It's responsible for message signing, verification, and routing.

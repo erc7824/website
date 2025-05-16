@@ -145,6 +145,22 @@ const config = {
           src: 'img/logo.svg',
           srcDark: 'img/logo_dark.svg',
         },
+        items: [
+          {
+            type: 'search',
+            position: 'right',
+          },
+          {
+            href: 'https://github.com/erc7824',
+            label: 'GitHub',
+            position: 'right',
+          },
+          // {
+          //   type: 'html',
+          //   position: 'right',
+          //   value: '<a href="/learn" class="custom-button">Learn</a>',
+          // },
+        ],
       },
       footer: {
         style: 'dark',
