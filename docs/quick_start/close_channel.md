@@ -172,8 +172,8 @@ if (settlementTx) {
 
 After closing a channel, you should:
 
-1. [Withdraw your funds]((withdrawal)) from the custody contract
-2. [Set up a new channel]((deposit_and_create_channel)) if you want to continue transacting with the counterparty
+1. [Withdraw your funds](withdrawal) from the custody contract
+2. [Set up a new channel](deposit_and_create_channel) if you want to continue transacting with the counterparty
 
 ## Closure Best Practices
 

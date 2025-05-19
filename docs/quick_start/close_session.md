@@ -1095,4 +1095,4 @@ After closing an application session, you can:
 2. [Create a new application session](application_session) if you need to continue with different parameters
 3. [Close the channel](close_channel) if you're done with all interactions
 
-For more advanced scenarios, see our detailed documentation on [state channel lifecycle management](advanced_topics).
+For more advanced scenarios, see our detailed documentation on state channel lifecycle management.

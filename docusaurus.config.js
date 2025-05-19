@@ -169,10 +169,10 @@ const config = {
             title: 'Docs',
             items: [
               { label: 'Introduction', to: '/' },
-              { label: 'ERC-7824', to: '/spec' },
-              { label: 'Protocol', to: '/protocol' },
-              { label: 'Resources', to: '/resources' },
-              { label: 'FAQ', to: '/faq' },
+              { label: 'ERC-7824', to: '/legacy/spec' },
+              { label: 'Protocol', to: '/legacy/protocol' },
+              { label: 'Resources', to: '/legacy/resources' },
+              { label: 'FAQ', to: '/legacy/faq' },
             ],
           },
           {

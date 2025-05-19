@@ -1033,4 +1033,4 @@ After creating an application session, you can:
 2. [Check your channel balances](balances) to monitor funds
 3. [Close the application session](close_session) when you're done
 
-For advanced use cases, see our detailed documentation on [application workflows](advanced_topics).
+For advanced use cases, see our detailed documentation on application workflows.
