@@ -32,7 +32,7 @@ Nitrolite supports three primary methods for resizing a channel:
 
 ## Performing a Channel Resize
 
-To resize a channel, you'll use the `createResizeChannelMessage` helper from NitroliteRPC and the `resizeChannel` method of your client. Here's how to implement it in different frameworks:
+To resize a channel, you'll use the `createResizeChannelMessage` helper from NitroliteRPC and the `resizeChannel` method of your client. The `createResizeChannelMessage` function accepts a message signing function and an array of resize parameters. Here's how to implement it in different frameworks:
 
 <Tabs>
   <TabItem value="react" label="React">
@@ -90,11 +90,12 @@ function useChannelResize() {
           : value;
       });
       
-      // 3. Create resize parameters
+      // 3. Create resize parameters for a deposit operation
+      // Note: You can only use either allocate_amount OR resize_amount (not both)
       const resizeParams = [{
         channel_id: channelId,
-        participant_change: 0, // Keep same participants
         funds_destination: walletAddress,
+        resize_amount: 50      // Deposit 50 tokens to this channel
       }];
       
       // 4. Create and send resize message to ClearNode
@@ -164,11 +165,12 @@ async function resizeChannel(channelId, ws, wallet, channelState, client) {
       return signature;
     };
     
-    // 2. Create resize parameters
+    // 2. Create resize parameters for a deposit operation
+    // Note: You can only use either allocate_amount OR resize_amount (not both)
     const resizeParams = [{
       channel_id: channelId,
-      participant_change: 0, // Keep same participants 
       funds_destination: wallet.address,
+      resize_amount: 50      // Deposit 50 tokens to this channel
     }];
     
     // 3. Create and send the resize message
@@ -325,11 +327,12 @@ export class ChannelResizeService {
         return await signer.signMessage(messageBytes);
       };
       
-      // Create resize parameters
+      // Create resize parameters for a deposit operation
+      // Note: You can only use either allocate_amount OR resize_amount (not both)
       const resizeParams = [{
         channel_id: channelId,
-        participant_change: 0, // No change in participants
         funds_destination: address,
+        resize_amount: 50      // Deposit 50 tokens to this channel
       }];
       
       return await createResizeChannelMessage(messageSigner, resizeParams);
@@ -609,10 +612,12 @@ export default defineComponent({
           return await signer.signMessage(ethers.getBytes(digestHex));
         };
         
+        // Create resize parameters for a deposit operation
+        // Note: You can only use either allocate_amount OR resize_amount (not both)
         const resizeParams = [{
           channel_id: channelId.value,
-          participant_change: 0,
           funds_destination: address,
+          resize_amount: 50      // Deposit 50 tokens to this channel
         }];
         
         // 5. Create and send resize message
@@ -757,13 +762,19 @@ This flow is particularly important when:
 
 ## The Resize Message Structure
 
-The resize request message includes:
+The `createResizeChannelMessage` function takes two parameters:
+
+1. `messageSigner`: A function that takes a payload and returns a signature
+2. `resizeParams`: An array of resize operation objects
+
+Each resize operation object in the array includes:
 
 | Parameter | Description | Example |
 |-----------|-------------|---------|
 | `channel_id` | Identifier for the channel to resize | `"0x1234567890abcdef..."` |
-| `participant_change` | Indicates changes to participants (usually 0) | `0` (no change) |
 | `funds_destination` | Address where funds would go | `"0xUserAddress..."` |
+| `allocate_amount` | Amount of tokens to allocate to this specific channel from unified balance | `80` (allocate 80 tokens from unified balance) |
+| `resize_amount` | Amount to deposit (positive) or withdraw (negative) from the channel | `75` (deposit 75 tokens) or `-100` (withdraw 100 tokens) |
 
 ## Broker Response Structure
 
@@ -779,6 +790,72 @@ The ClearNode's response contains a new state that includes:
 | `state_hash` | Hash of the state | `"0x61cec3..."` |
 | `server_signature` | Broker's signature | `{v, r, s}` values |
 
+## Understanding Allocation and Resize Amounts
+
+When working with Nitrolite channels across different networks, it's important to understand how to use `allocate_amount` and `resize_amount`:
+
+- **`allocate_amount`**: Controls how much of your unified token balance is allocated to a specific channel on a specific network.
+- **`resize_amount`**: Controls how much you want to deposit to or withdraw from a specific channel.
+
+**IMPORTANT**: In a single resize operation, you can only use either `allocate_amount` OR `resize_amount`, not both at the same time. Only include the parameter you're using.
+
+### Allocation and Resize Examples
+
+**Example 1: Depositing to a Channel**
+
+Initial state:
+- User has channels on Polygon (20 USDC) and Celo (5 USDC)
+- Total unified balance: 25 USDC
+
+To deposit 75 USDC to Celo channel:
+```javascript
+const resizeParams = [{
+  channel_id: "0xCeloChannelId...",
+  funds_destination: userAddress,
+  resize_amount: 75        // Deposit 75 USDC
+}];
+```
+
+Result:
+- Polygon channel: 20 USDC
+- Celo channel: 80 USDC
+- Total unified balance: 100 USDC
+
+**Example 2: Withdrawing All Funds to a Specific Network**
+
+Initial state (after Example 1):
+- Polygon channel: 20 USDC
+- Celo channel: 80 USDC
+- Total unified balance: 100 USDC
+
+To withdraw all 100 USDC to Polygon:
+```javascript
+// Step 1: First allocate funds from Celo to Polygon
+const allocateParams = [{
+  channel_id: "0xPolygonChannelId...",
+  funds_destination: userAddress,
+  allocate_amount: 80     // Allocate 80 USDC from Celo to Polygon
+}];
+
+// Step 2: Then withdraw from Polygon
+const withdrawParams = [{
+  channel_id: "0xPolygonChannelId...",
+  funds_destination: userAddress,
+  resize_amount: -100      // Withdraw 100 USDC
+}];
+
+// For deallocating from Celo when needed:
+const deallocateParams = [{
+  channel_id: "0xCeloChannelId...",
+  funds_destination: userAddress,
+  allocate_amount: -80    // Deallocate all funds from Celo
+}];
+```
+
+Result:
+- All 100 USDC withdrawn to user's wallet on Polygon
+- Channels may remain open with zero balance
+
 ## Common Use Cases for Channel Resize
 
 | Scenario | Description | Implementation Details |
@@ -786,6 +863,8 @@ The ClearNode's response contains a new state that includes:
 | **Pre-closure Preparation** | Ensuring broker has sufficient funds to close the channel | Use resize before closure to adjust broker funds |
 | **Adding Capacity** | Increasing channel capacity for continued operations | Add funds to the channel with appropriate allocations |
 | **Balance Adjustment** | Adjusting balances between participants | Resize with new allocation values |
+| **Cross-Network Transfers** | Moving funds between channels on different networks | Use allocation to move funds between networks |
+| **Withdrawals** | Withdrawing funds from the system | Allocate funds to target network, then use negative resize_amount |
 | **Recovery** | Recovering from an inconsistent state | Work with broker to establish correct state |
 
 ## Best Practices
@@ -797,6 +876,23 @@ When resizing channels, follow these best practices:
 3. **Implement proper error handling** for timeout and connection issues
 4. **Clean up event listeners** to prevent memory leaks
 5. **Provide clear user feedback** during the resize process
+6. **Use allocate_amount OR resize_amount (not both)** in a single operation:
+   - To deposit: Use only `resize_amount: [positive amount]`
+   - To withdraw: First allocate funds to the target channel (in a separate operation), then use negative resize_amount
+   - To transfer between networks: Use only allocation `allocate_amount: [amount]`
+7. **When withdrawing all funds**, consider deallocating from other channels
+
+## Common Allocation and Resize Scenarios
+
+Remember: You can only use either `allocate_amount` OR `resize_amount` in a single operation, not both.
+
+| Action | Parameter to Use | Value | Example |
+|--------|-----------------|-------|---------|
+| **Simple deposit** | resize_amount | Positive amount | `resize_amount: 50` |
+| **Simple withdrawal** | resize_amount | Negative amount | `resize_amount: -30` |
+| **Cross-network allocation** | allocate_amount | Positive amount | `allocate_amount: 75` |
+| **Deallocate** | allocate_amount | Negative amount | `allocate_amount: -40` |
+| **Withdraw from multiple channels** | Two separate operations | Operation 1: allocate_amount (positive)<br/>Operation 2: resize_amount (negative) | Step 1: `allocate_amount: 80`<br/>Step 2: `resize_amount: -100` |
 
 ## Common Errors and Troubleshooting
 
