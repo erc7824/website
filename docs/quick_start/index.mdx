@@ -63,6 +63,10 @@ import { NitroliteClient } from '@erc7824/nitrolite';
 const { NitroliteClient } = require('@erc7824/nitrolite');
 ```
 
+## Build with AI
+We have generated a [llms-full.txt](/llms-full.txt) file that converts all our documentation into a single markdown document following the https://llmstxt.org/ standard.
+
+
 
 ## Next steps
 
@@ -75,7 +79,7 @@ Channels follow a clear lifecycle that involves several key steps:
 5. **[Application Sessions](application_session)**: Create sessions to run specific applications
 6. **[Session Closure](close_session)**: Properly close application sessions when finished
 7. **[Resize Operations](resize_channel)**: Adjust channel capacity as needed
-9. **[Channel Closure](close_channel)**: Safely close channels with final state settlement
+8. **[Channel Closure](close_channel)**: Safely close channels with final state settlement
 9. **[Withdrawal](withdrawal)**: Reclaim your funds from the custody contract
 
 We recommend working through these guides in sequence to understand the complete channel workflow. Each guide builds on concepts from previous sections.
