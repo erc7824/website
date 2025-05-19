@@ -40,21 +40,17 @@ To resize a channel, you'll use the `createResizeChannelMessage` helper from Nit
 ```javascript
 import { useCallback } from 'react';
 import { createResizeChannelMessage } from '@erc7824/nitrolite';
-import { Hex, Address } from 'viem';
 
 // Hook for handling channel resizing
 export function useResize() {
-  // This function handles the actual resize operation with the provided states
-  const handleResizeChannel = useCallback(async (finalState, initState) => {
+  // Function to submit resize request to the NitroliteClient
+  const handleResizeChannel = useCallback(async (resizeState, originalState) => {
     try {
-      console.log('Using initial state proofs:', initState);
-
-      // Call the client's resizeChannel method with the resize state and proof states
+      // Call client's resizeChannel with new state and proof of original state
       await NitroliteStore.state.client.resizeChannel({
-        resizeState: finalState,
-        proofStates: [initState],
+        resizeState: resizeState,
+        proofStates: [originalState],
       });
-
       return true;
     } catch (error) {
       console.error('Error resizing channel:', error);
@@ -62,147 +58,79 @@ export function useResize() {
     }
   }, []);
 
-  return {
-    handleResizeChannel,
-  };
+  return { handleResizeChannel };
 }
 
-// Component or hook implementing the resize flow
-function useChannelResizeOperation() {
+// Hook implementing the resize flow
+function useChannelResize() {
   const { handleResizeChannel } = useResize();
   
-  // Main resize function that creates the resize message and processes the response
   const resizeChannel = useCallback(async () => {
-    // Get current wallet and signer
-    const signer = nitroSnap.stateSigner;
-    
-    if (!isConnected || !walletSnap.walletAddress) {
+    // Prerequisites check
+    if (!isConnected || !walletAddress) {
       console.error('WebSocket not connected or wallet not connected');
       return;
     }
     
-    setLoading((prev) => ({ ...prev, resize: true }));
+    setLoading(true);
     
     try {
-      // Get channel information from local storage
-      const channelId = localStorage.getItem('nitrolite_channel_id') || '';
-      const state = localStorage.getItem('nitrolite_channel_state') || '';
+      // 1. Retrieve channel data
+      const channelId = localStorage.getItem('nitrolite_channel_id');
+      const stateJson = localStorage.getItem('nitrolite_channel_state');
       
-      if (!state) {
-        throw new Error('No channel state found. Please create a channel first.');
+      if (!channelId || !stateJson || !stateSigner) {
+        throw new Error('Missing channel data or signer');
       }
       
-      if (!channelId) {
-        throw new Error('No channel ID found. Please create a channel first.');
-      }
-      
-      if (!nitroSnap.stateSigner) {
-        throw new Error('State signer not initialized. Please create a channel first.');
-      }
-      
-      // Define destination for funds (usually your address)
-      const fundDestination = walletSnap.walletAddress;
-      
-      // Parse the saved channel state
-      const parsedState = JSON.parse(state, (key, value) => {
-        // Convert strings that look like BigInts back to BigInt
-        if (typeof value === 'string' && /^\d+n$/.test(value)) {
-          return BigInt(value.substring(0, value.length - 1));
-        }
-        return value;
+      // 2. Parse the stored channel state (handling BigInt conversion)
+      const originalState = JSON.parse(stateJson, (key, value) => {
+        return typeof value === 'string' && /^\d+n$/.test(value)
+          ? BigInt(value.slice(0, -1))
+          : value;
       });
       
-      // Validate the parsed state
-      if (!parsedState || !parsedState.allocations || parsedState.allocations.length === 0) {
-        throw new Error('Invalid channel state. No allocations found.');
-      }
+      // 3. Create resize parameters
+      const resizeParams = [{
+        channel_id: channelId,
+        participant_change: 0, // Keep same participants
+        funds_destination: walletAddress,
+      }];
       
-      if (!nitroSnap.userAccountFromParticipants) {
-        throw new Error('User account not found in participants.');
-      }
-      
-      console.log('Current allocations:', parsedState.allocations[0]);
-      
-      // Create resize parameters
-      // participant_change: 0 keeps the same participants
-      // A negative value would change participants
-      const resizeParams = [
-        {
-          channel_id: channelId,
-          participant_change: 0,
-          funds_destination: fundDestination,
-        },
-      ];
-      
-      // Create the resize message
-      const resizeMessage = await createResizeChannelMessage(signer.sign, resizeParams);
-      
-      // Send the resize message to the ClearNode
+      // 4. Create and send resize message to ClearNode
+      const resizeMessage = await createResizeChannelMessage(
+        stateSigner.sign, 
+        resizeParams
+      );
       const response = await sendRequest(resizeMessage);
       
-      // Example response from ClearNode:
-      // {
-      //   "channel_id": "0x5e9f1bf4f970d3d6f2c30b62c6fb3650ef48a8f170ca2020fb4858ee10f5b377",
-      //   "state_data": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000002ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffec780000000000000000000000000000000000000000000000000000000000000000",
-      //   "intent": 2,
-      //   "version": 1,
-      //   "allocations": [
-      //     {
-      //       "destination": "0x47b56a639D1Dbe3eDfb3c34b1BB583Bf4312be97",
-      //       "token": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      //       "amount": 0
-      //     },
-      //     {
-      //       "destination": "0x3c93C321634a80FB3657CFAC707718A11cA57cBf",
-      //       "token": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      //       "amount": 0
-      //     }
-      //   ],
-      //   "state_hash": "0x61cec33449997e8478ae9d3cff96dc33eb7547ce35e2b5b634c4a567d50a8972",
-      //   "server_signature": {
-      //     "v": "28",
-      //     "r": "\"0xb36160607133e8fcb7e85698a9d87836a41e2a6324b4be5edc66b4de4d990897\"",
-      //     "s": "\"0x5770fd47cd6f7da77d8a24f9dc0b9732dedf635b776ff1037d616e25f16580a7\""
-      //   }
-      // }
-      
-      // Extract broker state from response
+      // 5. Process broker response
       const brokerState = response[0];
-      
-      // Format the resize state data
-      const resizeStateData = {
+      const resizeState = {
         channelId: brokerState.channel_id,
         stateData: brokerState.state_data,
         version: brokerState.version,
         intent: brokerState.intent,
-        allocations: [
-          {
-            destination: brokerState.allocations[0].destination,
-            token: brokerState.allocations[0].token,
-            amount: brokerState.allocations[0].amount,
-          },
-          {
-            destination: brokerState.allocations[1].destination,
-            token: brokerState.allocations[1].token,
-            amount: brokerState.allocations[1].amount,
-          },
-        ],
-        serverSignature: brokerState['server_signature'],
+        allocations: brokerState.allocations.map(alloc => ({
+          destination: allocation.destination,
+          token: allocation.token,
+          amount: allocation.amount,
+        })),
+        serverSignature: brokerState.server_signature,
       };
       
-      // Call the resize function with the new state and original state
-      await handleResizeChannel(resizeStateData, parsedState);
+      // 6. Submit resize to client
+      await handleResizeChannel(resizeState, originalState);
       
-      // Update account info after resize
-      await Promise.all([getAccountInfo(), getParticipants()]);
+      // 7. Update app state after successful resize
+      await refreshChannelData();
       
-      console.log('Channel resized successfully');
     } catch (error) {
-      console.error('Error resizing channel:', error);
+      console.error('Resize failed:', error);
     } finally {
-      setLoading((prev) => ({ ...prev, resize: false }));
+      setLoading(false);
     }
-  }, [isConnected, walletSnap.walletAddress, sendRequest, handleResizeChannel, getAccountInfo, getParticipants]);
+  }, [isConnected, walletAddress, stateSigner]);
   
   return { resizeChannel };
 }
@@ -221,133 +149,111 @@ import { ethers } from 'ethers';
  * @param {WebSocket} ws - WebSocket connection to the ClearNode
  * @param {object} wallet - Ethers wallet for signing
  * @param {object} channelState - Current channel state
- * @returns {Promise<boolean>} Success status
+ * @returns {Promise<object>} Result with success status and channel ID
  */
-async function resizeChannel(channelId, ws, wallet, channelState) {
+async function resizeChannel(channelId, ws, wallet, channelState, client) {
+  if (!channelId) throw new Error('Channel ID is required');
+  
   try {
-    console.log(`Resizing channel ${channelId}`);
-    
-    if (!channelId) {
-      throw new Error('Channel ID is required');
-    }
-    
-    // Message signer function
+    // 1. Create message signer function
     const messageSigner = async (payload) => {
-      try {
-        const message = JSON.stringify(payload);
-        const digestHex = ethers.id(message);
-        const messageBytes = ethers.getBytes(digestHex);
-        const { serialized: signature } = wallet.signingKey.sign(messageBytes);
-        return signature;
-      } catch (error) {
-        console.error("Error signing message:", error);
-        throw error;
-      }
+      const message = JSON.stringify(payload);
+      const digestHex = ethers.id(message);
+      const messageBytes = ethers.getBytes(digestHex);
+      const { serialized: signature } = wallet.signingKey.sign(messageBytes);
+      return signature;
     };
     
-    // Define the destination for funds (typically your address)
-    const fundDestination = wallet.address;
+    // 2. Create resize parameters
+    const resizeParams = [{
+      channel_id: channelId,
+      participant_change: 0, // Keep same participants 
+      funds_destination: wallet.address,
+    }];
     
-    // Create resize parameters
-    const resizeParams = [
-      {
-        channel_id: channelId,
-        participant_change: 0, // 0 means no change in participants
-        funds_destination: fundDestination,
-      },
-    ];
-    
-    // Create the resize message
+    // 3. Create and send the resize message
     const resizeMessage = await createResizeChannelMessage(messageSigner, resizeParams);
     
-    // Send the message and wait for response
-    return new Promise((resolve, reject) => {
-      // Create a one-time message handler for the resize response
-      const handleResizeResponse = (data) => {
-        try {
-          const rawData = typeof data === 'string' ? data : data.toString();
-          const message = JSON.parse(rawData);
-          
-          console.log('Received resize response:', message);
-          
-          // Check if this is a resize response
-          if (message.res && message.res[1] === 'resize_channel') {
-            // Remove the listener once we get the response
-            ws.removeListener('message', handleResizeResponse);
-            
-            // Extract broker state from response
-            const brokerState = message.res[2][0];
-            
-            // Format resize state
-            const resizeState = {
-              channelId: brokerState.channel_id,
-              stateData: brokerState.state_data,
-              version: brokerState.version,
-              intent: brokerState.intent,
-              allocations: brokerState.allocations,
-              serverSignature: brokerState.server_signature,
-            };
-            
-            // Call client's resize method
-            client.resizeChannel({
-              resizeState: resizeState,
-              proofStates: [channelState],
-            })
-            .then(() => {
-              resolve({
-                success: true,
-                channelId: brokerState.channel_id
-              });
-            })
-            .catch(error => {
-              reject(new Error(`Error completing resize: ${error.message}`));
-            });
-          }
-          
-          // Check for error responses
-          if (message.err) {
-            ws.removeListener('message', handleResizeResponse);
-            reject(new Error(`Error ${message.err[1]}: ${message.err[2]}`));
-          }
-        } catch (error) {
-          console.error('Error handling resize response:', error);
-        }
-      };
-      
-      // Add the message handler
-      ws.on('message', handleResizeResponse);
-      
-      // Set timeout to prevent hanging
-      setTimeout(() => {
-        ws.removeListener('message', handleResizeResponse);
-        reject(new Error('Resize timeout'));
-      }, 15000);
-      
-      // Send the signed message
-      ws.send(resizeMessage);
-    });
+    // 4. Process the response
+    return await handleWebSocketResponse(ws, resizeMessage, channelState, client);
   } catch (error) {
     console.error(`Error resizing channel ${channelId}:`, error);
     throw error;
   }
 }
 
+/**
+ * Handle WebSocket communication for channel resize
+ */
+function handleWebSocketResponse(ws, resizeMessage, channelState, client) {
+  return new Promise((resolve, reject) => {
+    const handleResizeResponse = (data) => {
+      try {
+        const rawData = typeof data === 'string' ? data : data.toString();
+        const message = JSON.parse(rawData);
+        
+        // Success response
+        if (message.res && message.res[1] === 'resize_channel') {
+          ws.removeListener('message', handleResizeResponse);
+          
+          // Extract and format broker state
+          const brokerState = message.res[2][0];
+          const resizeState = {
+            channelId: brokerState.channel_id,
+            stateData: brokerState.state_data,
+            version: brokerState.version,
+            intent: brokerState.intent,
+            allocations: brokerState.allocations,
+            serverSignature: brokerState.server_signature,
+          };
+          
+          // Submit to client
+          client.resizeChannel({
+            resizeState: resizeState,
+            proofStates: [channelState],
+          })
+          .then(() => {
+            resolve({
+              success: true,
+              channelId: brokerState.channel_id
+            });
+          })
+          .catch(error => {
+            reject(new Error(`Resize completion failed: ${error.message}`));
+          });
+        }
+        
+        // Error response
+        if (message.err) {
+          ws.removeListener('message', handleResizeResponse);
+          reject(new Error(`Error ${message.err[1]}: ${message.err[2]}`));
+        }
+      } catch (error) {
+        console.error('Error handling resize response:', error);
+      }
+    };
+    
+    // Set up message handling
+    ws.on('message', handleResizeResponse);
+    
+    // Set timeout (15 seconds)
+    setTimeout(() => {
+      ws.removeListener('message', handleResizeResponse);
+      reject(new Error('Resize timeout after 15 seconds'));
+    }, 15000);
+    
+    // Send the message
+    ws.send(resizeMessage);
+  });
+}
+
 // Usage example
 const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-
-// Load the current channel state (could be from storage, previous API call, etc.)
 const channelState = loadChannelState(channelId);
 
-// Assuming you have a WebSocket connection and wallet initialized
-resizeChannel(channelId, ws, wallet, channelState)
-  .then(result => {
-    if (result.success) {
-      console.log(`Channel ${result.channelId} resized successfully`);
-    }
-  })
-  .catch(error => {
-    console.error('Failed to resize channel:', error);
-  });
+resizeChannel(channelId, ws, wallet, channelState, client)
+  .then(result => console.log(`Channel ${result.channelId} resized successfully`))
+  .catch(error => console.error('Resize failed:', error));
 ```
 
   </TabItem>
@@ -371,82 +277,61 @@ export class ChannelResizeService {
   public channelId$ = this.channelIdSubject.asObservable();
   
   constructor() {
-    // Retrieve channel ID from storage if available
+    // Load channel ID from storage
     const storedChannelId = localStorage.getItem('nitrolite_channel_id');
-    if (storedChannelId) {
-      this.channelIdSubject.next(storedChannelId);
-    }
+    if (storedChannelId) this.channelIdSubject.next(storedChannelId);
   }
   
   public setWebSocket(ws: WebSocket): void {
     this.webSocket = ws;
   }
   
-  public resizeChannel(
-    signer: any,
-    client: any,
-    channelId: string
-  ): Observable<any> {
-    if (!this.webSocket) {
-      throw new Error('WebSocket connection is not established');
-    }
+  /**
+   * Main method to resize a channel
+   */
+  public resizeChannel(signer: any, client: any, channelId: string): Observable<any> {
+    // 1. Validate prerequisites
+    if (!this.webSocket) throw new Error('WebSocket not connected');
+    if (!channelId) throw new Error('Channel ID required');
     
-    if (!channelId) {
-      throw new Error('Channel ID is required');
-    }
+    // 2. Load channel state
+    const stateJson = localStorage.getItem('nitrolite_channel_state');
+    if (!stateJson) throw new Error('No channel state found');
+    const channelState = JSON.parse(stateJson);
     
-    // Get stored channel state
-    const channelStateJSON = localStorage.getItem('nitrolite_channel_state');
-    if (!channelStateJSON) {
-      throw new Error('No channel state found');
-    }
-    
-    // Parse channel state
-    const channelState = JSON.parse(channelStateJSON);
-    
-    return from(this.createResizeMessage(
-      signer,
-      channelId
-    )).pipe(
+    // 3. Execute resize flow using RxJS pipes
+    return from(this.createResizeMessage(signer, channelId)).pipe(
       switchMap(message => this.sendResizeRequest(message)),
       switchMap(brokerState => this.processResize(client, brokerState, channelState)),
-      tap(() => {
-        console.log('Channel resized successfully');
-      }),
+      tap(() => console.log('Channel resized successfully')),
       catchError(error => {
-        console.error('Error resizing channel:', error);
+        console.error('Resize failed:', error);
         throw error;
       })
     );
   }
   
-  private async createResizeMessage(
-    signer: any,
-    channelId: string
-  ): Promise<string> {
+  /**
+   * Create the signed resize message
+   */
+  private async createResizeMessage(signer: any, channelId: string): Promise<string> {
     try {
-      // Get user address from signer
+      // Get user address and create message signer function
       const address = await signer.getAddress();
-      
-      // Create resize parameters
-      const resizeParams = [
-        {
-          channel_id: channelId,
-          participant_change: 0, // No change in participants
-          funds_destination: address,
-        },
-      ];
-      
-      // Create message signer function
       const messageSigner = async (payload: any) => {
         const message = JSON.stringify(payload);
         const digestHex = ethers.id(message);
         const messageBytes = ethers.getBytes(digestHex);
-        const signature = await signer.signMessage(messageBytes);
-        return signature;
+        return await signer.signMessage(messageBytes);
       };
       
-      // Create the resize message
+      // Create resize parameters
+      const resizeParams = [{
+        channel_id: channelId,
+        participant_change: 0, // No change in participants
+        funds_destination: address,
+      }];
+      
       return await createResizeChannelMessage(messageSigner, resizeParams);
     } catch (error) {
       console.error('Error creating resize message:', error);
@@ -454,6 +339,9 @@ export class ChannelResizeService {
     }
   }
   
+  /**
+   * Send resize request to ClearNode via WebSocket
+   */
   private sendResizeRequest(resizeMessage: string): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.webSocket) {
@@ -464,14 +352,13 @@ export class ChannelResizeService {
       const handleMessage = (event: MessageEvent) => {
         try {
           const message = JSON.parse(event.data);
+          // Success response
           if (message.res && message.res[1] === 'resize_channel') {
             this.webSocket?.removeEventListener('message', handleMessage);
-            
-            // Extract broker state
-            const brokerState = message.res[2][0];
-            resolve(brokerState);
+            resolve(message.res[2][0]); // Return broker state
           }
           
+          // Error response
           if (message.err) {
             this.webSocket?.removeEventListener('message', handleMessage);
             reject(new Error(`Error: ${message.err[1]} - ${message.err[2]}`));
@@ -481,33 +368,37 @@ export class ChannelResizeService {
         }
       };
       
+      // Set up message handling with timeout
       this.webSocket.addEventListener('message', handleMessage);
-      this.webSocket.send(resizeMessage);
-      
-      // Set timeout to prevent hanging
       setTimeout(() => {
         this.webSocket?.removeEventListener('message', handleMessage);
-        reject(new Error('Resize channel timeout'));
+        reject(new Error('Resize timeout after 15 seconds'));
       }, 15000);
+      
+      // Send the message
+      this.webSocket.send(resizeMessage);
     });
   }
   
+  /**
+   * Process broker response and submit to client
+   */
   private async processResize(client: any, brokerState: any, channelState: any): Promise<any> {
-    // Format the resize state data
+    // Format resize state data from broker response
     const resizeStateData = {
       channelId: brokerState.channel_id,
       stateData: brokerState.state_data,
       version: brokerState.version,
       intent: brokerState.intent,
       allocations: brokerState.allocations.map((alloc: any) => ({
-        destination: alloc.destination,
-        token: alloc.token,
-        amount: alloc.amount,
+        destination: allocation.destination,
+        token: allocation.token,
+        amount: allocation.amount,
       })),
       serverSignature: brokerState.server_signature,
     };
     
-    // Call the client's resizeChannel method
+    // Submit to client
     return await client.resizeChannel({
       resizeState: resizeStateData,
       proofStates: [channelState],
@@ -524,45 +415,24 @@ import { ChannelResizeService } from './channel-resize.service';
   template: `
     <div class="channel-container">
       <h3>Resize Channel</h3>
-      <div *ngIf="channelId">
-        Current Channel ID: {{ channelId }}
+      <div *ngIf="channelId" class="channel-info">
+        <p>Channel ID: {{ channelId }}</p>
         <button (click)="resizeChannel()" [disabled]="isResizing">
           {{ isResizing ? 'Resizing...' : 'Resize Channel' }}
         </button>
       </div>
       
-      <div *ngIf="!channelId" class="info-message">
-        No active channel found.
-      </div>
-      
-      <div *ngIf="error" class="error-message">
-        {{ error }}
-      </div>
-      
-      <div *ngIf="success" class="success-message">
-        Channel resized successfully!
-      </div>
+      <div *ngIf="!channelId" class="info-message">No active channel found.</div>
+      <div *ngIf="error" class="error-message">{{ error }}</div>
+      <div *ngIf="success" class="success-message">Channel resized successfully!</div>
     </div>
   `,
   styles: [`
-    .channel-container {
-      margin: 20px;
-      padding: 15px;
-      border: 1px solid #eee;
-      border-radius: 5px;
-    }
-    .error-message {
-      color: red;
-      margin-top: 10px;
-    }
-    .success-message {
-      color: green;
-      margin-top: 10px;
-    }
-    .info-message {
-      color: blue;
-      margin-top: 10px;
-    }
+    .channel-container { margin: 20px; padding: 15px; border: 1px solid #eee; border-radius: 5px; }
+    .channel-info { margin-bottom: 15px; }
+    .error-message { color: red; margin-top: 10px; }
+    .success-message { color: green; margin-top: 10px; }
+    .info-message { color: blue; margin-top: 10px; }
   `]
 })
 export class ChannelResizeComponent implements OnInit {
@@ -572,22 +442,24 @@ export class ChannelResizeComponent implements OnInit {
   success = false;
   
   constructor(
-    private channelResizeService: ChannelResizeService,
-    private nitroliteClient: any // Your client service
+    private resizeService: ChannelResizeService,
+    private nitroliteClient: any
   ) {}
   
   ngOnInit(): void {
     // Subscribe to channel ID changes
-    this.channelResizeService.channelId$.subscribe(id => {
+    this.resizeService.channelId$.subscribe(id => {
       this.channelId = id;
       this.success = false;
     });
     
-    // Initialize WebSocket (implementation would depend on your setup)
+    // Initialize WebSocket
+    this.initWebSocket();
+  }
+  
+  private initWebSocket(): void {
     const ws = new WebSocket('wss://your-clearnode-endpoint');
-    ws.onopen = () => {
-      this.channelResizeService.setWebSocket(ws);
-    };
+    ws.onopen = () => this.resizeService.setWebSocket(ws);
   }
   
   resizeChannel(): void {
@@ -600,8 +472,9 @@ export class ChannelResizeComponent implements OnInit {
     this.error = null;
     this.success = false;
     
-    // Assuming you have access to a signer (e.g., from MetaMask)
-    const signer = window.ethereum && new ethers.providers.Web3Provider(window.ethereum).getSigner();
+    // Get signer from wallet provider
+    const provider = window.ethereum && new ethers.providers.Web3Provider(window.ethereum);
+    const signer = provider?.getSigner();
     
     if (!signer) {
       this.error = 'No wallet connected';
@@ -609,20 +482,18 @@ export class ChannelResizeComponent implements OnInit {
       return;
     }
     
-    this.channelResizeService.resizeChannel(
-      signer,
-      this.nitroliteClient,
-      this.channelId
-    ).subscribe({
-      next: () => {
-        this.success = true;
-        this.isResizing = false;
-      },
-      error: (err) => {
-        this.error = `Failed to resize channel: ${err.message}`;
-        this.isResizing = false;
-      }
-    });
+    // Execute resize
+    this.resizeService.resizeChannel(signer, this.nitroliteClient, this.channelId)
+      .subscribe({
+        next: () => {
+          this.success = true;
+          this.isResizing = false;
+        },
+        error: (err) => {
+          this.error = `Resize failed: ${err.message}`;
+          this.isResizing = false;
+        }
+      });
   }
 }
 ```
@@ -638,30 +509,15 @@ export class ChannelResizeComponent implements OnInit {
     
     <div v-if="channelId" class="active-channel">
       <p>Channel ID: {{ channelId }}</p>
-      
-      <button 
-        @click="resizeChannel" 
-        :disabled="isResizing || !isConnected"
-      >
+      <button @click="resizeChannel" :disabled="isResizing || !isConnected">
         {{ isResizing ? 'Resizing Channel...' : 'Resize Channel' }}
       </button>
     </div>
     
-    <div v-else class="no-channel">
-      <p>No active channel found.</p>
-    </div>
-    
-    <div v-if="error" class="error-message">
-      {{ error }}
-    </div>
-    
-    <div v-if="success" class="success-message">
-      Channel resized successfully!
-    </div>
-    
-    <div v-if="!isConnected" class="warning-message">
-      WebSocket not connected to ClearNode
-    </div>
+    <div v-else class="no-channel">No active channel found.</div>
+    <div v-if="error" class="error-message">{{ error }}</div>
+    <div v-if="success" class="success-message">Channel resized successfully!</div>
+    <div v-if="!isConnected" class="warning-message">WebSocket not connected</div>
   </div>
 </template>
 
@@ -674,6 +530,7 @@ export default defineComponent({
   name: 'ChannelResize',
   
   setup() {
+    // State references
     const channelId = ref(localStorage.getItem('nitrolite_channel_id') || null);
     const channelState = ref(null);
     const isResizing = ref(false);
@@ -682,212 +539,171 @@ export default defineComponent({
     const isConnected = ref(false);
     let webSocket = null;
     
-    // Load channel state on mount
+    // Lifecycle hooks
     onMounted(() => {
-      // Load channel state from storage
-      const storedState = localStorage.getItem('nitrolite_channel_state');
-      if (storedState) {
-        try {
-          channelState.value = JSON.parse(storedState, (key, value) => {
-            // Convert strings that look like BigInts back to BigInt
-            if (typeof value === 'string' && /^\d+n$/.test(value)) {
-              return BigInt(value.substring(0, value.length - 1));
-            }
-            return value;
-          });
-        } catch (err) {
-          console.error('Error parsing channel state:', err);
-        }
-      }
-      
-      // Initialize WebSocket connection
+      loadChannelState();
       initWebSocket();
     });
     
     onUnmounted(() => {
-      // Clean up WebSocket connection
-      if (webSocket) {
-        webSocket.close();
-      }
+      if (webSocket) webSocket.close();
     });
     
+    // Load channel state from storage
+    const loadChannelState = () => {
+      const storedState = localStorage.getItem('nitrolite_channel_state');
+      if (!storedState) return;
+      
+      try {
+        // Parse JSON with BigInt support
+        channelState.value = JSON.parse(storedState, (key, value) => {
+          return typeof value === 'string' && /^\d+n$/.test(value)
+            ? BigInt(value.slice(0, -1))
+            : value;
+        });
+      } catch (err) {
+        console.error('Error parsing channel state:', err);
+      }
+    };
+    
+    // Initialize WebSocket connection
     const initWebSocket = () => {
       webSocket = new WebSocket('wss://your-clearnode-endpoint');
-      
-      webSocket.onopen = () => {
-        isConnected.value = true;
-        console.log('WebSocket connected to ClearNode');
-      };
-      
-      webSocket.onclose = () => {
-        isConnected.value = false;
-        console.log('WebSocket disconnected from ClearNode');
-      };
-      
-      webSocket.onerror = (e) => {
+      webSocket.onopen = () => isConnected.value = true;
+      webSocket.onclose = () => isConnected.value = false;
+      webSocket.onerror = () => {
         isConnected.value = false;
         error.value = 'WebSocket connection error';
-        console.error('WebSocket error:', e);
       };
     };
     
+    // Main resize function
     const resizeChannel = async () => {
+      // 1. Validate prerequisites
       if (!isConnected.value || !webSocket) {
         error.value = 'WebSocket not connected';
         return;
       }
       
-      if (!channelId.value) {
-        error.value = 'No channel ID found';
-        return;
-      }
-      
-      if (!channelState.value) {
-        error.value = 'No channel state found';
+      if (!channelId.value || !channelState.value) {
+        error.value = 'Missing channel data';
         return;
       }
       
       try {
+        // 2. Set up UI state
         isResizing.value = true;
         error.value = null;
         success.value = false;
         
-        // Get Ethereum provider and signer
-        if (!window.ethereum) {
-          throw new Error('No Ethereum provider found');
-        }
-        
+        // 3. Get wallet signer
+        if (!window.ethereum) throw new Error('No Ethereum provider');
         const provider = new ethers.providers.Web3Provider(window.ethereum);
         const signer = provider.getSigner();
         const address = await signer.getAddress();
         
-        // Create resize parameters
-        const resizeParams = [
-          {
-            channel_id: channelId.value,
-            participant_change: 0, // No participant changes
-            funds_destination: address,
-          },
-        ];
-        
-        // Message signer function
+        // 4. Create message signer and resize parameters
         const messageSigner = async (payload) => {
           const message = JSON.stringify(payload);
           const digestHex = ethers.id(message);
-          const messageBytes = ethers.getBytes(digestHex);
-          return await signer.signMessage(messageBytes);
+          return await signer.signMessage(ethers.getBytes(digestHex));
         };
         
-        // Create the resize message
-        const resizeMessage = await createResizeChannelMessage(
-          messageSigner,
-          resizeParams
-        );
+        const resizeParams = [{
+          channel_id: channelId.value,
+          participant_change: 0,
+          funds_destination: address,
+        }];
         
-        // Send the message and get broker state
+        // 5. Create and send resize message
+        const resizeMessage = await createResizeChannelMessage(messageSigner, resizeParams);
         const brokerState = await sendWebSocketRequest(resizeMessage);
         
-        // Format resize state data
+        // 6. Format and submit resize state
         const resizeStateData = {
           channelId: brokerState.channel_id,
           stateData: brokerState.state_data,
           version: brokerState.version,
           intent: brokerState.intent,
           allocations: brokerState.allocations.map(alloc => ({
-            destination: alloc.destination,
-            token: alloc.token,
-            amount: alloc.amount,
+            destination: allocation.destination,
+            token: allocation.token,
+            amount: allocation.amount,
           })),
           serverSignature: brokerState.server_signature,
         };
         
-        // Call the client resize method
         await window.nitroliteClient.resizeChannel({
           resizeState: resizeStateData,
           proofStates: [channelState.value],
         });
         
+        // 7. Update state after success
         success.value = true;
-        
-        // Optionally refresh channel state after resize
         await refreshChannelState();
         
       } catch (err) {
-        error.value = err.message || 'Error resizing channel';
-        console.error('Failed to resize channel:', err);
+        error.value = err.message || 'Resize failed';
+        console.error('Resize error:', err);
       } finally {
         isResizing.value = false;
       }
     };
     
+    // Send WebSocket request and handle response
     const sendWebSocketRequest = (payload) => {
       return new Promise((resolve, reject) => {
         const handleMessage = (event) => {
           try {
             const message = JSON.parse(event.data);
             
+            // Success response
             if (message.res && message.res[1] === 'resize_channel') {
               webSocket.removeEventListener('message', handleMessage);
-              
-              // Extract broker state
-              const brokerState = message.res[2][0];
-              resolve(brokerState);
+              resolve(message.res[2][0]); // Broker state
             }
             
+            // Error response
             if (message.err) {
               webSocket.removeEventListener('message', handleMessage);
-              reject(new Error(`Error: ${message.err[1]} - ${message.err[2]}`));
+              reject(new Error(`${message.err[1]}: ${message.err[2]}`));
             }
           } catch (error) {
             console.error('Error parsing message:', error);
           }
         };
         
+        // Setup listener with timeout
         webSocket.addEventListener('message', handleMessage);
-        webSocket.send(payload);
-        
-        // Set timeout to prevent hanging
         setTimeout(() => {
           webSocket.removeEventListener('message', handleMessage);
-          reject(new Error('Resize channel timeout'));
+          reject(new Error('Resize timeout'));
         }, 15000);
+        
+        webSocket.send(payload);
       });
     };
     
+    // Update channel state after resize
     const refreshChannelState = async () => {
-      // This would be implemented based on your client's API
-      // to retrieve the latest channel state after resize
       try {
+        // Get updated state from client
         const newState = await window.nitroliteClient.getChannelState(channelId.value);
         
-        // Save to local storage
-        localStorage.setItem(
-          'nitrolite_channel_state', 
+        // Store with BigInt serialization
+        localStorage.setItem('nitrolite_channel_state', 
           JSON.stringify(newState, (key, value) => {
-            // Convert BigInts to a format that can be saved in JSON
-            if (typeof value === 'bigint') {
-              return value.toString() + 'n';
-            }
-            return value;
+            return typeof value === 'bigint' ? value.toString() + 'n' : value;
           })
         );
         
-        // Update state ref
         channelState.value = newState;
-        
       } catch (err) {
-        console.error('Error refreshing channel state:', err);
+        console.error('Error refreshing state:', err);
       }
     };
     
-    return {
-      channelId,
-      isResizing,
-      error,
-      success,
-      isConnected,
-      resizeChannel
-    };
+    return { channelId, isResizing, error, success, isConnected, resizeChannel };
   }
 });
 </script>
@@ -905,18 +721,9 @@ export default defineComponent({
   background-color: #f5f5f5;
   border-radius: 4px;
 }
-.error-message {
-  color: #d32f2f;
-  margin-top: 10px;
-}
-.success-message {
-  color: #388e3c;
-  margin-top: 10px;
-}
-.warning-message {
-  color: #f57c00;
-  margin-top: 10px;
-}
+.error-message { color: #d32f2f; margin-top: 10px; }
+.success-message { color: #388e3c; margin-top: 10px; }
+.warning-message { color: #f57c00; margin-top: 10px; }
 button {
   padding: 8px 16px;
   background-color: #1976d2;
@@ -925,10 +732,7 @@ button {
   border-radius: 4px;
   cursor: pointer;
 }
-button:disabled {
-  background-color: #bbdefb;
-  cursor: not-allowed;
-}
+button:disabled { background-color: #bbdefb; cursor: not-allowed; }
 </style>
 ```
 
