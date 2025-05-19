@@ -21,26 +21,6 @@ In Nitrolite, your funds generally exist in two states:
 
 The `withdrawal` method specifically targets the second category - funds that are available in the custody contract but not locked in any active channel.
 
-## Method Signature
-
-```typescript
-/**
- * Withdraws tokens previously deposited into the custody contract.
- * This does not withdraw funds locked in active channels.
- * @param amount The amount of tokens/ETH to withdraw.
- * @returns The transaction hash.
- */
-async withdrawal(amount: bigint): Promise<Hash> {
-    const tokenAddress = this.addresses.tokenAddress;
-
-    try {
-        return await this.nitroliteService.withdraw(tokenAddress, amount);
-    } catch (err) {
-        throw new Errors.ContractCallError("Failed to execute withdrawDeposit on contract", err as Error);
-    }
-}
-```
-
 ## Prerequisites for Withdrawal
 
 Before attempting to withdraw funds, ensure:
@@ -49,397 +29,495 @@ Before attempting to withdraw funds, ensure:
 2. You have non-zero available balance in the custody contract
 3. Your wallet is connected and has enough ETH for gas fees
 
-## Checking Available Balance
+## Implementing Withdrawal
 
-Before withdrawing, check how much is available for withdrawal:
-
-```javascript
-// Get account information, including available funds
-const accountInfo = await client.getAccountInfo();
-
-// Display available funds (not locked in channels)
-console.log('Available for withdrawal:', accountInfo.available);
-console.log('Locked in channels:', accountInfo.locked);
-
-// Check if withdrawal is possible
-if (accountInfo.available <= 0n) {
-  console.log('No funds available for withdrawal');
-  return;
-}
-```
-
-## Basic Withdrawal Example
-
-Here's a simple example of withdrawing all available funds:
-
-```javascript
-// Get account information
-const accountInfo = await client.getAccountInfo();
-
-// Ensure there are funds available to withdraw
-if (accountInfo.available <= 0n) {
-  console.log('No funds available for withdrawal');
-  return;
-}
-
-try {
-  // Withdraw all available funds
-  const txHash = await client.withdrawal(accountInfo.available);
-  console.log('Withdrawal transaction submitted:', txHash);
-  
-  // Transaction hash can be used to check status on a block explorer
-  console.log(`View transaction: https://sepolia.etherscan.io/tx/${txHash}`);
-} catch (error) {
-  console.error('Withdrawal failed:', error);
-}
-```
-
-## Complete React Implementation
-
-Here's a more comprehensive implementation in a React component:
+Here's how to implement withdrawals in different frameworks:
 
 <Tabs>
   <TabItem value="react" label="React">
 
-```jsx
-import { useEffect, useState, useCallback } from 'react';
+```javascript
+import { useCallback } from 'react';
 
-function WithdrawalComponent({ client }) {
-  const [accountInfo, setAccountInfo] = useState(null);
-  const [isWithdrawing, setIsWithdrawing] = useState(false);
-  const [txHash, setTxHash] = useState(null);
-  const [error, setError] = useState(null);
-  
-  // Function to fetch account information
-  const fetchAccountInfo = useCallback(async () => {
-    if (!client) return;
-    
-    try {
-      const info = await client.getAccountInfo();
-      setAccountInfo(info);
-    } catch (err) {
-      console.error('Failed to fetch account info:', err);
-      setError('Failed to load account information');
-    }
-  }, [client]);
-  
-  // Load account info when component mounts or client changes
-  useEffect(() => {
-    fetchAccountInfo();
-  }, [client, fetchAccountInfo]);
-  
-  // Function to handle withdrawal
-  const handleWithdrawal = async () => {
-    if (!client || !accountInfo) {
-      setError('Client not initialized or account info not loaded');
-      return;
-    }
-    
-    // Check if there are funds available to withdraw
-    if (!accountInfo.available || accountInfo.available <= 0n) {
-      setError('No funds available for withdrawal');
-      return;
-    }
-    
-    setIsWithdrawing(true);
-    setError(null);
-    setTxHash(null);
-    
-    try {
-      // Withdraw all available funds
-      const hash = await client.withdrawal(accountInfo.available);
-      setTxHash(hash);
-      console.log('Withdrawal transaction hash:', hash);
-      
-      // Refresh account info after withdrawal
-      await fetchAccountInfo();
-    } catch (err) {
-      setError(err.message);
-      console.error('Withdrawal failed:', err);
-    } finally {
-      setIsWithdrawing(false);
-    }
-  };
-  
-  // Helper function to format bigint for display
-  const formatAmount = (amount) => {
-    if (!amount) return '0';
-    return (Number(amount) / 1e6).toFixed(6); // Assuming 6 decimals for USDC
-  };
-  
-  if (!client) {
-    return <div>Client not initialized</div>;
-  }
-  
-  return (
-    <div>
-      <h2>Withdraw Available Funds</h2>
-      
-      {accountInfo && (
-        <div>
-          <p>Available for withdrawal: {formatAmount(accountInfo.available)} USDC</p>
-          <p>Locked in channels: {formatAmount(accountInfo.locked)} USDC</p>
-        </div>
-      )}
-      
-      <button 
-        onClick={handleWithdrawal} 
-        disabled={
-          isWithdrawing || 
-          !accountInfo || 
-          !accountInfo.available || 
-          accountInfo.available <= 0n
-        }
-      >
-        {isWithdrawing ? 'Processing...' : 'Withdraw All Available Funds'}
-      </button>
-      
-      {txHash && (
-        <div>
-          <p>Transaction submitted: {txHash}</p>
-          <a 
-            href={`https://sepolia.etherscan.io/tx/${txHash}`} 
-            target="_blank" 
-            rel="noopener noreferrer"
-          >
-            View on Etherscan
-          </a>
-        </div>
-      )}
-      
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-    </div>
-  );
-}
-```
-
-  </TabItem>
-  <TabItem value="vue" label="Vue">
-
-```vue
-<template>
-  <div>
-    <h2>Withdraw Available Funds</h2>
-    
-    <div v-if="accountInfo">
-      <p>Available for withdrawal: {{ formatAmount(accountInfo.available) }} USDC</p>
-      <p>Locked in channels: {{ formatAmount(accountInfo.locked) }} USDC</p>
-    </div>
-    
-    <button 
-      @click="handleWithdrawal" 
-      :disabled="isWithdrawing || !accountInfo || !accountInfo.available || accountInfo.available <= 0n"
-    >
-      {{ isWithdrawing ? 'Processing...' : 'Withdraw All Available Funds' }}
-    </button>
-    
-    <div v-if="txHash">
-      <p>Transaction submitted: {{ txHash }}</p>
-      <a 
-        :href="`https://sepolia.etherscan.io/tx/${txHash}`" 
-        target="_blank" 
-        rel="noopener noreferrer"
-      >
-        View on Etherscan
-      </a>
-    </div>
-    
-    <p v-if="error" style="color: red">Error: {{ error }}</p>
-  </div>
-</template>
-
-<script>
-export default {
-  props: {
-    client: {
-      type: Object,
-      required: true
-    }
-  },
-  
-  data() {
-    return {
-      accountInfo: null,
-      isWithdrawing: false,
-      txHash: null,
-      error: null
-    }
-  },
-  
-  methods: {
-    async fetchAccountInfo() {
-      if (!this.client) return;
-      
-      try {
-        this.accountInfo = await this.client.getAccountInfo();
-      } catch (err) {
-        console.error('Failed to fetch account info:', err);
-        this.error = 'Failed to load account information';
-      }
-    },
-    
-    async handleWithdrawal() {
-      if (!this.client || !this.accountInfo) {
-        this.error = 'Client not initialized or account info not loaded';
-        return;
-      }
-      
-      // Check if there are funds available to withdraw
-      if (!this.accountInfo.available || this.accountInfo.available <= 0n) {
-        this.error = 'No funds available for withdrawal';
-        return;
-      }
-      
-      this.isWithdrawing = true;
-      this.error = null;
-      this.txHash = null;
-      
-      try {
-        // Withdraw all available funds
-        this.txHash = await this.client.withdrawal(this.accountInfo.available);
-        console.log('Withdrawal transaction hash:', this.txHash);
-        
-        // Refresh account info after withdrawal
-        await this.fetchAccountInfo();
-      } catch (err) {
-        this.error = err.message;
-        console.error('Withdrawal failed:', err);
-      } finally {
-        this.isWithdrawing = false;
-      }
-    },
-    
-    formatAmount(amount) {
-      if (!amount) return '0';
-      return (Number(amount) / 1e6).toFixed(6); // Assuming 6 decimals for USDC
-    }
-  },
-  
-  mounted() {
-    this.fetchAccountInfo();
-  },
-  
-  watch: {
-    client() {
-      this.fetchAccountInfo();
-    }
-  }
-}
-</script>
-```
-
-  </TabItem>
-</Tabs>
-
-## Handling Withdrawal in an Application
-
-For a more complete integration example, let's see how to implement this in a React component that might be part of a larger application:
-
-```jsx
-import { useCallback, useState } from 'react';
-
-function WithdrawalSection({ nitroSnap, walletSnap, isConnected, chainId }) {
-  const [loading, setLoading] = useState(false);
-  
-  // Function to refresh account information
-  const getAccountInfo = useCallback(async () => {
-    if (nitroSnap.client) {
-      return await nitroSnap.client.getAccountInfo();
-    }
-  }, [nitroSnap.client]);
-  
-  // Function to refresh participants information
-  const getParticipants = useCallback(async () => {
-    if (nitroSnap.client) {
-      return await nitroSnap.client.getParticipants();
-    }
-  }, [nitroSnap.client]);
-  
+// Hook for handling withdrawals from the custody contract
+export function useWithdrawal() {
+  // Main withdrawal function
   const handleWithdrawal = useCallback(async () => {
-    if (!isConnected || !walletSnap.walletAddress || !nitroSnap.client || !chainId) {
-      console.error('WebSocket not connected, wallet not connected, client not initialized, or no active chain');
-      return;
+    // 1. Check prerequisites
+    if (!isConnected || !walletAddress || !client || !chainId) {
+      console.error('Missing requirements: WebSocket, wallet, client, or chain');
+      return { success: false, error: 'Connection prerequisites not met' };
     }
-    
+
     setLoading(true);
+
     try {
-      if (!nitroSnap.accountInfo?.available || nitroSnap.accountInfo.available <= 0n) {
-        console.warn('No funds to withdraw');
-        return;
+      // 2. Verify available funds
+      if (!accountInfo?.available || accountInfo.available <= 0n) {
+        console.warn('No funds available to withdraw');
+        return { success: false, error: 'No available funds' };
       }
-      
-      // Initiate withdrawal with available funds
-      const txHash = await nitroSnap.client.withdrawal(nitroSnap.accountInfo.available);
-      console.log('Withdrawal transaction hash:', txHash);
-      
-      // Refresh account and participants information after withdrawal
-      await Promise.all([getAccountInfo(), getParticipants()]);
-      
-      console.log('Withdrawal successful');
+
+      // 3. Execute withdrawal for all available funds
+      const txHash = await client.withdrawal(accountInfo.available);
+
+      // 4. Refresh account data
+      await refreshAccountData();
+
+      console.log('Withdrawal successful, transaction:', txHash);
+      return { success: true, txHash };
     } catch (error) {
       console.error('Withdrawal failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
     } finally {
       setLoading(false);
     }
   }, [
     isConnected,
-    walletSnap.walletAddress,
-    nitroSnap.client,
-    nitroSnap.accountInfo,
+    walletAddress,
+    client,
+    accountInfo,
     chainId,
-    getAccountInfo,
-    getParticipants,
+    refreshAccountData
   ]);
+
+  // Function to withdraw a specific amount
+  const withdrawSpecificAmount = useCallback(async (amount) => {
+    if (!client) {
+      return { success: false, error: 'Client not initialized' };
+    }
+
+    if (!amount || amount <= 0n) {
+      return { success: false, error: 'Invalid amount' };
+    }
+
+    setLoading(true);
+
+    try {
+      // Ensure amount doesn't exceed available balance
+      if (accountInfo?.available && amount > accountInfo.available) {
+        return { 
+          success: false, 
+          error: 'Amount exceeds available balance' 
+        };
+      }
+
+      // Execute withdrawal for specified amount
+      const txHash = await client.withdrawal(amount);
+      
+      // Refresh account data
+      await refreshAccountData();
+      
+      return { success: true, txHash };
+    } catch (error) {
+      console.error('Withdrawal failed:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      };
+    } finally {
+      setLoading(false);
+    }
+  }, [client, accountInfo, refreshAccountData]);
+
+  return { handleWithdrawal, withdrawSpecificAmount };
+}
+
+// Usage example
+async function exampleUsage() {
+  const { handleWithdrawal } = useWithdrawal();
+  const result = await handleWithdrawal();
   
-  return (
-    <div>
-      <h3>Withdraw Available Funds</h3>
-      
-      {nitroSnap.accountInfo && (
-        <p>
-          Available: {(Number(nitroSnap.accountInfo.available) / 1e6).toFixed(6)} USDC
-        </p>
-      )}
-      
-      <button 
-        onClick={handleWithdrawal}
-        disabled={
-          loading || 
-          !isConnected || 
-          !nitroSnap.client || 
-          !nitroSnap.accountInfo?.available || 
-          nitroSnap.accountInfo.available <= 0n
-        }
-      >
-        {loading ? 'Processing...' : 'Withdraw Funds'}
-      </button>
-    </div>
-  );
+  if (result.success) {
+    console.log(`Withdrawal successful! Transaction: ${result.txHash}`);
+  } else {
+    console.error(`Withdrawal failed: ${result.error}`);
+  }
 }
 ```
 
-## Important Considerations
+  </TabItem>
+  <TabItem value="nodejs" label="Node.js">
 
-1. **Distinction from Channel Funds**: The `withdrawal` method only affects funds that are available in the custody contract - it cannot withdraw funds that are locked in active channels. To access funds in channels, you must first close those channels.
+```javascript
+import { ethers } from 'ethers';
 
-2. **Gas Costs**: Withdrawals are on-chain transactions that require gas fees. Ensure your wallet has enough ETH to cover these costs.
+/**
+ * Withdraw funds from the custody contract
+ * @param {object} client - Nitrolite client
+ * @param {object} account - Account information containing available balance
+ * @param {boolean} withdrawAll - Whether to withdraw all available funds
+ * @param {bigint} amount - Optional specific amount to withdraw
+ * @returns {Promise<object>} Result with transaction hash
+ */
+async function withdrawFunds(client, account, withdrawAll = true, amount = null) {
+  try {
+    // 1. Check prerequisites
+    if (!client) {
+      throw new Error('Client not initialized');
+    }
 
-3. **Transaction Confirmation**: The method returns a transaction hash immediately, but the actual withdrawal may take some time to be confirmed on the blockchain.
+    // 2. Check available balance
+    if (!account || !account.available || account.available <= 0n) {
+      console.warn('No funds available to withdraw');
+      return { success: false, error: 'No available funds' };
+    }
 
-4. **Error Handling**: Implement proper error handling as shown in the examples above. Withdrawals can fail for various reasons including:
-   - Insufficient gas
-   - Network congestion
-   - Contract reverts
-   - Wallet permissions
+    let withdrawAmount;
+    
+    if (withdrawAll) {
+      // Withdraw all available funds
+      withdrawAmount = account.available;
+    } else if (amount) {
+      // Withdraw specific amount
+      if (amount <= 0n) {
+        return { success: false, error: 'Amount must be greater than 0' };
+      }
+      
+      if (amount > account.available) {
+        return { 
+          success: false, 
+          error: `Amount exceeds available balance (${amount} > ${account.available})` 
+        };
+      }
+      
+      withdrawAmount = amount;
+    } else {
+      return { success: false, error: 'Either withdrawAll or amount must be specified' };
+    }
 
-5. **Amount Parameter**: The amount should be specified as a bigint value in the smallest unit of the token (e.g., for USDC with 6 decimals, 1 USDC = 1,000,000 units).
+    console.log(`Withdrawing ${withdrawAmount} from custody contract...`);
 
-## Next Steps
+    // 3. Execute withdrawal
+    const txHash = await client.withdrawal(withdrawAmount);
+    
+    console.log(`Withdrawal successful! Transaction: ${txHash}`);
+    return { success: true, txHash };
+  } catch (error) {
+    console.error('Withdrawal failed:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+}
 
-After successfully withdrawing your available funds, you might want to:
+// Usage example
+async function main() {
+  try {
+    // Initialize client (simplified)
+    const provider = new ethers.providers.JsonRpcProvider('https://ethereum-rpc-url');
+    const wallet = new ethers.Wallet('your-private-key', provider);
+    const client = await initializeClient(wallet, provider);
+    
+    // Get account information
+    const accountInfo = await client.getAccountInfo();
+    console.log(`Available balance: ${accountInfo.available}`);
+    
+    // Withdraw all funds
+    const result = await withdrawFunds(client, accountInfo, true);
+    
+    if (result.success) {
+      console.log(`Withdrawal complete! Transaction: ${result.txHash}`);
+    } else {
+      console.error(`Withdrawal failed: ${result.error}`);
+    }
+  } catch (error) {
+    console.error('Error in main function:', error);
+  }
+}
+```
 
-1. [Close your channels](close_channel) if you still have funds locked in active channels
-2. [Create new channels](deposit_and_create_channel) with different parameters
-3. [Resize your existing channels](resize_channel) to adjust capacity
+  </TabItem>
+  <TabItem value="angular" label="Angular">
 
-For more detailed information about working with state channels, check the [Nitrolite Client Reference](../nitrolite_client) section.
+```typescript
+// withdrawal.service.ts
+import { Injectable } from '@angular/core';
+import { Observable, from } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class WithdrawalService {
+  constructor() {}
+  
+  /**
+   * Withdraw all available funds from custody contract
+   */
+  public withdrawAllFunds(client: any, accountInfo: any): Observable<any> {
+    // Validate inputs
+    if (!client || !accountInfo) {
+      return from(Promise.resolve({
+        success: false,
+        error: 'Client or account info not provided'
+      }));
+    }
+    
+    if (!accountInfo.available || accountInfo.available <= 0n) {
+      return from(Promise.resolve({
+        success: false,
+        error: 'No available funds to withdraw'
+      }));
+    }
+    
+    return from(this.executeWithdrawal(client, accountInfo.available)).pipe(
+      map(txHash => ({
+        success: true,
+        txHash
+      })),
+      catchError(error => {
+        console.error('Withdrawal failed:', error);
+        return from([{
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }]);
+      })
+    );
+  }
+  
+  /**
+   * Withdraw a specific amount of funds
+   */
+  public withdrawAmount(client: any, accountInfo: any, amount: bigint): Observable<any> {
+    // Validate inputs
+    if (!client) {
+      return from(Promise.resolve({
+        success: false,
+        error: 'Client not provided'
+      }));
+    }
+    
+    if (!amount || amount <= 0n) {
+      return from(Promise.resolve({
+        success: false,
+        error: 'Invalid withdrawal amount'
+      }));
+    }
+    
+    if (!accountInfo?.available || amount > accountInfo.available) {
+      return from(Promise.resolve({
+        success: false,
+        error: 'Amount exceeds available balance'
+      }));
+    }
+    
+    return from(this.executeWithdrawal(client, amount)).pipe(
+      map(txHash => ({
+        success: true,
+        txHash
+      })),
+      catchError(error => {
+        console.error('Withdrawal failed:', error);
+        return from([{
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        }]);
+      })
+    );
+  }
+  
+  /**
+   * Execute withdrawal transaction
+   */
+  private async executeWithdrawal(client: any, amount: bigint): Promise<string> {
+    try {
+      return await client.withdrawal(amount);
+    } catch (error) {
+      console.error('Error executing withdrawal:', error);
+      throw error;
+    }
+  }
+}
+
+// Usage example
+async function withdrawUsingService() {
+  // Get service and client instances
+  const service = new WithdrawalService();
+  const client = getClient(); // Your nitrolite client
+  
+  // Get account information
+  const accountInfo = await client.getAccountInfo();
+  
+  if (accountInfo.available > 0n) {
+    // Withdraw all available funds
+    service.withdrawAllFunds(client, accountInfo).subscribe({
+      next: (result) => {
+        if (result.success) {
+          console.log(`Withdrawal successful: ${result.txHash}`);
+        } else {
+          console.error(`Withdrawal failed: ${result.error}`);
+        }
+      }
+    });
+  }
+}
+```
+
+  </TabItem>
+  <TabItem value="vue" label="Vue.js">
+
+```javascript
+import { defineComponent } from 'vue';
+
+/**
+ * Withdrawal functionality for Vue.js applications
+ * Can be used in a component's setup() method
+ */
+export function useWithdrawal(client) {
+  /**
+   * Withdraw all available funds from the custody contract
+   * @param {object} accountInfo - The account information containing available balance
+   * @returns {Promise<object>} Result with transaction hash or error
+   */
+  const withdrawAllFunds = async (accountInfo) => {
+    // 1. Validate requirements
+    if (!client) {
+      return { success: false, error: 'Client not initialized' };
+    }
+
+    if (!accountInfo?.available || accountInfo.available <= 0n) {
+      return { success: false, error: 'No available funds to withdraw' };
+    }
+
+    try {
+      // 2. Execute withdrawal for all available funds
+      const txHash = await client.withdrawal(accountInfo.available);
+      return { success: true, txHash };
+    } catch (err) {
+      console.error('Withdrawal failed:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Unknown error' 
+      };
+    }
+  };
+
+  /**
+   * Withdraw a specific amount of funds
+   * @param {object} accountInfo - The account information containing available balance
+   * @param {bigint} amount - The specific amount to withdraw
+   * @returns {Promise<object>} Result with transaction hash or error
+   */
+  const withdrawSpecificAmount = async (accountInfo, amount) => {
+    // 1. Validate requirements
+    if (!client) {
+      return { success: false, error: 'Client not initialized' };
+    }
+
+    if (!amount || amount <= 0n) {
+      return { success: false, error: 'Invalid withdrawal amount' };
+    }
+
+    if (!accountInfo?.available || amount > accountInfo.available) {
+      return { 
+        success: false, 
+        error: 'Amount exceeds available balance' 
+      };
+    }
+
+    try {
+      // 2. Execute withdrawal for specified amount
+      const txHash = await client.withdrawal(amount);
+      return { success: true, txHash };
+    } catch (err) {
+      console.error('Withdrawal failed:', err);
+      return { 
+        success: false, 
+        error: err instanceof Error ? err.message : 'Unknown error' 
+      };
+    }
+  };
+
+  // Format a bigint amount to a human-readable string (assumes 6 decimals like USDC)
+  const formatAmount = (amount) => {
+    if (!amount) return '0';
+    return (Number(amount) / 1e6).toFixed(6);
+  };
+
+  return {
+    withdrawAllFunds,
+    withdrawSpecificAmount,
+    formatAmount
+  };
+}
+
+// Usage example
+async function withdrawExample() {
+  // Assuming client is initialized elsewhere
+  const { withdrawAllFunds, withdrawSpecificAmount } = useWithdrawal(client);
+  
+  // Get account information
+  const accountInfo = await client.getAccountInfo();
+  console.log(`Available balance: ${(Number(accountInfo.available) / 1e6).toFixed(6)}`);
+  
+  // Withdraw all available funds
+  const result = await withdrawAllFunds(accountInfo);
+  
+  if (result.success) {
+    console.log(`Withdrawal successful! Transaction: ${result.txHash}`);
+  } else {
+    console.error(`Withdrawal failed: ${result.error}`);
+  }
+}
+```
+
+  </TabItem>
+</Tabs>
+
+## Understanding Withdrawals
+
+When withdrawing funds from the custody contract, here's what happens:
+
+1. **Check available balance**: The system verifies you have sufficient available (unlocked) funds
+2. **Create and submit transaction**: Your client submits a transaction to the custody contract
+3. **Wait for confirmation**: The blockchain processes the transaction
+4. **Receive funds**: Tokens are sent back to your wallet address
+
+## Withdrawal Parameters
+
+The withdrawal method takes a single parameter:
+
+| Parameter | Type | Description | Example |
+|-----------|------|-------------|--------|
+| `amount` | bigint | Amount of tokens to withdraw (in smallest unit) | `1000000n` (for 1 USDC with 6 decimals) |
+
+## Common Withdrawal Scenarios
+
+| Scenario | Description | Implementation |
+|----------|-------------|---------------|
+| **Withdraw all** | Withdraw entire available balance | `client.withdrawal(accountInfo.available)` |
+| **Partial withdrawal** | Withdraw specific amount | `client.withdrawal(1000000n)` |
+| **After channel closure** | Withdraw funds after closing channels | First close channel, then withdraw |
+
+## Handling Available vs. Locked Funds
+
+It's important to understand that:
+
+1. You can only withdraw **available** funds, not those locked in active channels
+2. To withdraw locked funds, you must first close the respective channels
+3. The `accountInfo` object contains both `available` and `locked` balances
+
+```javascript
+const accountInfo = await client.getAccountInfo();
+console.log(`Available: ${accountInfo.available}`);
+
+// Can only withdraw the available amount
+if (accountInfo.available > 0n) {
+  await client.withdrawal(accountInfo.available);
+}
+```
+
+## Best Practices
+
+When implementing withdrawals, follow these best practices:
+
+1. **Always check available balance** before attempting withdrawal
+2. **Handle transaction errors** gracefully, with proper user feedback
+3. **Refresh account data** after successful withdrawal
+4. **Provide transaction hash** to users for tracking purposes
+5. **Consider gas costs** which are paid separately from the withdrawal amount

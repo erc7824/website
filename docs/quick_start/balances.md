@@ -1,6 +1,6 @@
 ---
 sidebar_position: 6
-title: Channel Balances
+title: Channel Asset Management
 description: Monitor off-chain balances in your active state channels using NitroliteRPC.
 keywords: [erc7824, nitrolite, balances, off-chain, ledger balances, clearnode]
 ---
@@ -8,7 +8,7 @@ keywords: [erc7824, nitrolite, balances, off-chain, ledger balances, clearnode]
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
-# Channel Balances
+# Channel Asset Management
 
 After connecting to a ClearNode, you'll need to monitor the off-chain balances in your state channels. This guide explains how to retrieve and work with off-chain balance information using the NitroliteRPC protocol.
 
