@@ -27,20 +27,24 @@ To monitor your channel funds, you need to retrieve the current off-chain balanc
 
 ## Understanding the Ledger Balances Request
 
-The `get_ledger_balances` request is used to retrieve the current off-chain balances for a specific channel from the ClearNode:
+The `get_ledger_balances` request is used to retrieve the current off-chain balances for a specific participant from the ClearNode:
 
-- **Request params**: `[{ acc: "0xChannelId" }]` where `0xChannelId` is your channel's unique identifier
-- **Response**: Array containing your balance object only (not all participants)
+- **Request params**: `[{ participant: "0xAddress" }]` where `0xAddress` is the participant's address
+- **Response**: Array containing the balances for different assets held by the participant
 
-The response contains your address and your current balance amount in the channel. Note that the ClearNode's balance is not returned as part of this response.
+The response contains a list of assets and their amounts for the specified participant. The balances are represented as strings with decimal precision, making it easier to display them directly without additional conversion.
 
 ```javascript
 // Example response format for get_ledger_balances
 {
-  "res": [2, "get_ledger_balances", [[  // The nested array contains balance data
+  "res": [1, "get_ledger_balances", [[  // The nested array contains balance data
     {
-      "address": "0x1234567890abcdef...",  // Your address
-      "amount": 100000                  // Your balance in smallest units (e.g., for USDC with 6 decimals)
+      "asset": "usdc",  // Asset identifier
+      "amount": "100.0"  // Amount as a string with decimal precision
+    },
+    {
+      "asset": "eth",
+      "amount": "0.5"
     }
   ]], 1619123456789],  // Timestamp
   "sig": ["0xabcd1234..."]
@@ -66,7 +70,7 @@ const messageSigner = async (payload) => {
 };
 
 // Function to get ledger balances
-async function getLedgerBalances(ws, channelId) {
+async function getLedgerBalances(ws, participant) {
   return new Promise((resolve, reject) => {
     // Create a unique handler for this specific request
     const handleMessage = (event) => {
@@ -86,7 +90,7 @@ async function getLedgerBalances(ws, channelId) {
     ws.addEventListener('message', handleMessage);
     
     // Create and send the ledger balances request
-    createGetLedgerBalancesMessage(messageSigner, channelId)
+    createGetLedgerBalancesMessage(messageSigner, participant)
       .then(message => {
         ws.send(message);
       })
@@ -105,28 +109,34 @@ async function getLedgerBalances(ws, channelId) {
 }
 
 // Usage example
-const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const participantAddress = '0x1234567890abcdef1234567890abcdef12345678';
 
 try {
-  const balances = await getLedgerBalances(ws, channelId);
+  const balances = await getLedgerBalances(ws, participantAddress);
   
   console.log('Channel ledger balances:', balances);
   // Example output:
   // [
-  //   {
-  //     "address": "0x1234567890abcdef...", // Your address
-  //     "amount": 100000                   // Your balance
-  //   }
+  //   [
+  //     { "asset": "usdc", "amount": "100.0" },
+  //     { "asset": "eth", "amount": "0.5" }
+  //   ]
   // ]
   
-  // Process your balance
+  // Process your balances
   if (balances[0] && balances[0].length > 0) {
-    const myBalance = balances[0][0]; // The first (and only) balance entry is yours
+    const balanceList = balances[0]; // Array of balance entries by asset
     
-    // Convert to token units if needed (e.g., USDC with 6 decimals)
-    const formattedAmount = myBalance.amount / 1000000; // For USDC with 6 decimals
+    // Display each asset balance
+    balanceList.forEach(balance => {
+      console.log(`${balance.asset.toUpperCase()} balance: ${balance.amount}`);
+    });
     
-    console.log(`My balance: ${formattedAmount} USDC`);
+    // Example: find a specific asset
+    const usdcBalance = balanceList.find(b => b.asset.toLowerCase() === 'usdc');
+    if (usdcBalance) {
+      console.log(`USDC balance: ${usdcBalance.amount}`);
+    }
   } else {
     console.log('No balance data available');
   }
@@ -143,10 +153,10 @@ import { ethers } from 'ethers';
 import { generateRequestId, getCurrentTimestamp } from '@erc7824/nitrolite';
 
 // Function to create a signed ledger balances request
-async function createLedgerBalancesRequest(signer, channelId) {
+async function createLedgerBalancesRequest(signer, participant) {
   const requestId = generateRequestId();
   const method = 'get_ledger_balances';
-  const params = [{ acc: channelId }];
+  const params = [{ participant }]; // Note: updated parameter name to 'participant'
   const timestamp = getCurrentTimestamp();
   
   // Create the request structure
@@ -166,9 +176,9 @@ async function createLedgerBalancesRequest(signer, channelId) {
 }
 
 // Function to get ledger balances
-async function getLedgerBalances(ws, channelId, signer) {
+async function getLedgerBalances(ws, participant, signer) {
   return new Promise((resolve, reject) => {
-    createLedgerBalancesRequest(signer, channelId)
+    createLedgerBalancesRequest(signer, participant)
       .then(({ stringified, requestId }) => {
         // Set up message handler
         const handleMessage = (event) => {
@@ -208,10 +218,10 @@ async function getLedgerBalances(ws, channelId, signer) {
 }
 
 // Usage example
-const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const participantAddress = '0x1234567890abcdef1234567890abcdef12345678';
 
 try {
-  const balances = await getLedgerBalances(ws, channelId, stateWallet);
+  const balances = await getLedgerBalances(ws, participantAddress, stateWallet);
   
   console.log('Channel ledger balances:', balances);
   // Process and display balances
@@ -225,16 +235,16 @@ try {
   </TabItem>
 </Tabs>
 
-## Checking Balances for a Specific Channel
+## Checking Balances for a Participant
 
-To retrieve off-chain balances for a specific channel, use the `createGetLedgerBalancesMessage` helper function:
+To retrieve off-chain balances for a participant, use the `createGetLedgerBalancesMessage` helper function:
 
 ```javascript
 import { createGetLedgerBalancesMessage } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
-// Function to get ledger balances for a specific channel
-async function getLedgerBalances(ws, channelId, messageSigner) {
+// Function to get ledger balances for a participant
+async function getLedgerBalances(ws, participant, messageSigner) {
   return new Promise((resolve, reject) => {
     // Message handler for the response
     const handleMessage = (event) => {
@@ -264,7 +274,7 @@ async function getLedgerBalances(ws, channelId, messageSigner) {
     ws.addEventListener('message', handleMessage);
     
     // Create and send the balance request
-    createGetLedgerBalancesMessage(messageSigner, channelId)
+    createGetLedgerBalancesMessage(messageSigner, participant)
       .then(message => {
         ws.send(message);
       })
@@ -277,17 +287,20 @@ async function getLedgerBalances(ws, channelId, messageSigner) {
 }
 
 // Example usage
-const channelId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+const participantAddress = '0x1234567890abcdef1234567890abcdef12345678';
 
-getLedgerBalances(ws, channelId, messageSigner)
+getLedgerBalances(ws, participantAddress, messageSigner)
   .then(balances => {
     console.log('Channel balances:', balances);
     
-    // Format your balance data (assuming USDC with 6 decimals)
+    // Process and display your balances
     if (balances[0] && balances[0].length > 0) {
-      const myBalance = balances[0][0]; // The first (and only) balance entry is yours
-      const formattedAmount = myBalance.amount / 1000000;
-      console.log(`My balance: ${formattedAmount} USDC`);
+      const balanceList = balances[0]; // Array of balance entries by asset
+      
+      console.log('My balances:');
+      balanceList.forEach(balance => {
+        console.log(`- ${balance.asset.toUpperCase()}: ${balance.amount}`);
+      });
     } else {
       console.log('No balance data available');
     }
@@ -303,27 +316,31 @@ When you receive balance data from the ClearNode, it's helpful to format it for 
 
 ```javascript
 // Simple function to format your balance data for display
-function formatMyBalance(balances, tokenDecimals = 6) {
+function formatMyBalances(balances) {
   if (!balances || !balances[0] || !Array.isArray(balances[0]) || balances[0].length === 0) {
     return null; // No balance data available
   }
   
-  // Extract your balance from the nested structure
-  const myBalance = balances[0][0]; // The first (and only) balance entry is yours
+  // Extract your balances from the nested structure
+  const balanceList = balances[0]; // Array of balance entries by asset
   
-  // Format your balance
-  return {
-    address: myBalance.address,
-    rawAmount: myBalance.amount,
-    formattedAmount: myBalance.amount / Math.pow(10, tokenDecimals)
-  };
+  // Return formatted balance information
+  return balanceList.map(balance => ({
+    asset: balance.asset.toUpperCase(),
+    amount: balance.amount,
+    // You can add additional formatting here if needed
+    displayAmount: `${balance.amount} ${balance.asset.toUpperCase()}`
+  }));
 }
 
 // Example usage
-const myFormattedBalance = formatMyBalance(balancesFromClearNode);
+const myFormattedBalances = formatMyBalances(balancesFromClearNode);
 
-if (myFormattedBalance) {
-  console.log(`My balance: ${myFormattedBalance.formattedAmount} USDC (${myFormattedBalance.address.substring(0, 8)}...)`);
+if (myFormattedBalances && myFormattedBalances.length > 0) {
+  console.log('My balances:');
+  myFormattedBalances.forEach(balance => {
+    console.log(`- ${balance.displayAmount}`);
+  });
 } else {
   console.log('No balance data available');
 }
@@ -339,15 +356,15 @@ Set up a regular interval to check balances, especially in active applications:
 
 ```javascript
 // Simple balance monitoring function
-function startBalanceMonitoring(ws, channelId, messageSigner, intervalMs = 30000) {
+function startBalanceMonitoring(ws, participantAddress, messageSigner, intervalMs = 30000) {
   // Check immediately on start
-  getLedgerBalances(ws, channelId, messageSigner)
+  getLedgerBalances(ws, participantAddress, messageSigner)
     .then(displayBalances)
     .catch(err => console.error('Initial balance check failed:', err));
   
   // Set up interval for regular checks
   const intervalId = setInterval(() => {
-    getLedgerBalances(ws, channelId, messageSigner)
+    getLedgerBalances(ws, participantAddress, messageSigner)
       .then(displayBalances)
       .catch(err => console.error('Balance check failed:', err));
   }, intervalMs); // Check every 30 seconds by default
@@ -360,11 +377,14 @@ function startBalanceMonitoring(ws, channelId, messageSigner, intervalMs = 30000
 function displayBalances(balances) {
   console.log(`Balance update at ${new Date().toLocaleTimeString()}:`);
   
-  // Format and display your balance
+  // Format and display your balances
   if (balances[0] && balances[0].length > 0) {
-    const myBalance = balances[0][0]; // The first (and only) balance entry is yours
-    const formattedAmount = myBalance.amount / 1000000; // For USDC with 6 decimals
-    console.log(`My balance: ${formattedAmount} USDC (${myBalance.address.substring(0, 8)}...)`);
+    const balanceList = balances[0]; // Array of balance entries by asset
+    
+    console.log('My balances:');
+    balanceList.forEach(balance => {
+      console.log(`- ${balance.asset.toUpperCase()}: ${balance.amount}`);
+    });
   } else {
     console.log('No balance data available');
   }

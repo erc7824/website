@@ -42,13 +42,8 @@ function useCreateApplicationSession() {
       participantA,
       participantB,
       amount,
-      tokenAddress
     ) => {
       try {
-        // Convert amount to proper format if needed
-        const amountBigInt = Number(amount);
-        const zeroBigInt = 0;
-
         // Define the application parameters
         const appDefinition = {
           protocol: 'nitroliterpc',
@@ -59,8 +54,19 @@ function useCreateApplicationSession() {
           nonce: Date.now(),  // Unique identifier
         };
 
-        // Define the initial intent (how funds are allocated)
-        const initialIntent = [amountBigInt, zeroBigInt];
+        // Define allocations with asset type instead of token address
+        const allocations = [
+          {
+            participant: participantA,
+            asset: 'usdc',
+            amount: amount,
+          },
+          {
+            participant: participantB,
+            asset: 'usdc',
+            amount: '0',
+          },
+        ];
 
         // Create a signed message using the createAppSessionMessage helper
         const signedMessage = await createAppSessionMessage(
@@ -68,21 +74,19 @@ function useCreateApplicationSession() {
           [
             {
               definition: appDefinition,
-              token: tokenAddress,
-              allocations: [amountBigInt, zeroBigInt],
+              allocations: allocations,
             },
-          ],
-          initialIntent
+          ]
         );
 
         // Send the signed message to the ClearNode
         const response = await sendRequest(signedMessage);
 
         // Handle the response
-        if (response && response[0] && response[0].app_id) {
-          // Store the app ID for future reference
-          localStorage.setItem('app_id', response[0].app_id);
-          return { success: true, app_id: response[0].app_id, response };
+        if (response && response[0] && response[0].app_session_id) {
+          // Store the app session ID for future reference
+          localStorage.setItem('app_session_id', response[0].app_session_id);
+          return { success: true, app_session_id: response[0].app_session_id, response };
         } else {
           return { success: true, response };
         }
@@ -139,12 +143,11 @@ function MyComponent() {
       sendRequest,       // Function to send the request
       '0xYourAddress',   // Your address
       '0xOtherAddress',  // Other participant's address
-      '1000000',         // Amount (in smallest units)
-      '0xTokenAddress'   // Token address
+      '100',             // Amount
     );
     
     if (result.success) {
-      console.log(`Application session created with ID: ${result.app_id}`);
+      console.log(`Application session created with ID: ${result.app_session_id}`);
     } else {
       console.error(`Failed to create application session: ${result.error}`);
     }
@@ -178,7 +181,7 @@ export class AppSessionService {
   
   constructor() {
     // Retrieve app ID from storage if available
-    const storedAppId = localStorage.getItem('app_id');
+    const storedAppId = localStorage.getItem('app_session_id');
     if (storedAppId) {
       this.appIdSubject.next(storedAppId);
     }
@@ -193,7 +196,6 @@ export class AppSessionService {
     participantA: string,
     participantB: string,
     amount: string,
-    tokenAddress: string
   ): Observable<any> {
     if (!this.webSocket) {
       throw new Error('WebSocket connection is not established');
@@ -204,12 +206,11 @@ export class AppSessionService {
       participantA,
       participantB,
       amount,
-      tokenAddress
     )).pipe(
       tap(result => {
-        if (result.success && result.app_id) {
-          localStorage.setItem('app_id', result.app_id);
-          this.appIdSubject.next(result.app_id);
+        if (result.success && result.app_session_id) {
+          localStorage.setItem('app_session_id', result.app_session_id);
+          this.appIdSubject.next(result.app_session_id);
         }
       }),
       catchError(error => {
@@ -224,12 +225,8 @@ export class AppSessionService {
     participantA: string,
     participantB: string,
     amount: string,
-    tokenAddress: string
   ): Promise<any> {
     try {
-      // Convert amount to proper format
-      const amountValue = Number(amount);
-      const zeroValue = 0;
       
       // Define the application parameters
       const appDefinition = {
@@ -241,8 +238,19 @@ export class AppSessionService {
         nonce: Date.now(),
       };
       
-      // Define the initial intent
-      const initialIntent = [amountValue, zeroValue];
+      // Define the allocations with asset type
+      const allocations = [
+        {
+          participant: participantA,
+          asset: 'usdc',
+          amount: amount,
+        },
+        {
+          participant: participantB,
+          asset: 'usdc',
+          amount: '0',
+        },
+      ];
       
       // Create message signer function
       const messageSigner = async (payload: any) => {
@@ -259,11 +267,9 @@ export class AppSessionService {
         [
           {
             definition: appDefinition,
-            token: tokenAddress,
-            allocations: [amountValue, zeroValue],
+            allocations: allocations,
           },
-        ],
-        initialIntent
+        ]
       );
       
       // Send the message and wait for response
@@ -291,7 +297,7 @@ export class AppSessionService {
             this.webSocket?.removeEventListener('message', handleMessage);
             resolve({
               success: true,
-              app_id: message.res[2]?.[0]?.app_id || null,
+              app_session_id: message.res[2]?.[0]?.app_session_id || null,
               status: message.res[2]?.[0]?.status || "open",
               response: message.res[2]
             });
@@ -379,7 +385,6 @@ export class AppSessionComponent implements OnInit {
     const participantA = '0xYourAddress';
     const participantB = '0xOtherAddress';
     const amount = '1000000'; // 1 USDC with 6 decimals
-    const tokenAddress = '0xTokenAddress';
     
     // Assuming you have access to a signer (e.g., from MetaMask)
     const signer = window.ethereum && new ethers.providers.Web3Provider(window.ethereum).getSigner();
@@ -394,8 +399,7 @@ export class AppSessionComponent implements OnInit {
       signer,
       participantA,
       participantB,
-      amount,
-      tokenAddress
+      amount
     ).subscribe({
       next: (result) => {
         console.log('App session created:', result);
@@ -451,7 +455,7 @@ export default defineComponent({
   name: 'AppSessionManager',
   
   setup() {
-    const appId = ref(localStorage.getItem('app_id') || null);
+    const appId = ref(localStorage.getItem('app_session_id') || null);
     const isCreating = ref(false);
     const error = ref(null);
     const isConnected = ref(false);
@@ -512,8 +516,7 @@ export default defineComponent({
         const participantA = address;
         const participantB = '0xOtherAddress';
         const amount = '1000000'; // 1 USDC with 6 decimals
-        const tokenAddress = '0xTokenAddress';
-        
+            
         // Define app session parameters
         const appDefinition = {
           protocol: 'nitroliterpc',
@@ -524,12 +527,7 @@ export default defineComponent({
           nonce: Date.now(),
         };
         
-        // Convert amount
-        const amountValue = Number(amount);
-        const zeroValue = 0;
         
-        // Define initial intent
-        const initialIntent = [amountValue, zeroValue];
         
         // Message signer function
         const messageSigner = async (payload) => {
@@ -539,28 +537,40 @@ export default defineComponent({
           return await signer.signMessage(messageBytes);
         };
         
+        // Define allocations with asset type
+        const allocations = [
+          {
+            participant: participantA,
+            asset: 'usdc',
+            amount: amount,
+          },
+          {
+            participant: participantB,
+            asset: 'usdc',
+            amount: '0',
+          },
+        ];
+        
         // Create signed message
         const signedMessage = await createAppSessionMessage(
           messageSigner,
           [
             {
               definition: appDefinition,
-              token: tokenAddress,
-              allocations: [amountValue, zeroValue],
+              allocations: allocations,
             },
-          ],
-          initialIntent
+          ]
         );
         
         // Send message and handle response
         const response = await sendWebSocketRequest(signedMessage);
         
-        if (response.success && response.app_id) {
-          appId.value = response.app_id;
-          localStorage.setItem('app_id', response.app_id);
-          console.log('Application session created successfully:', response.app_id);
+        if (response.success && response.app_session_id) {
+          appId.value = response.app_session_id;
+          localStorage.setItem('app_session_id', response.app_session_id);
+          console.log('Application session created successfully:', response.app_session_id);
         } else {
-          console.warn('Session created but no app_id returned:', response);
+          console.warn('Session created but no app_session_id returned:', response);
         }
       } catch (err) {
         error.value = err.message || 'Error creating application session';
@@ -579,11 +589,11 @@ export default defineComponent({
             if (message.res && message.res[1] === 'create_app_session') {
               webSocket.removeEventListener('message', handleMessage);
               
-              const appSessionId = message.res[2]?.[0]?.app_id;
+              const appSessionId = message.res[2]?.[0]?.app_session_id;
               const status = message.res[2]?.[0]?.status || "open";
               resolve({
                 success: true,
-                app_id: appSessionId,
+                app_session_id: appSessionId,
                 status: status,
                 response: message.res[2]
               });
@@ -670,10 +680,9 @@ import { ethers } from 'ethers';
  * @param {string} participantB - Second participant's address
  * @param {WebSocket} ws - WebSocket connection to the ClearNode
  * @param {object} wallet - Ethers wallet for signing
- * @param {string} tokenAddress - The token address for the session
  * @returns {Promise<string>} The app session ID
  */
-async function createAppSession(participantA, participantB, ws, wallet, tokenAddress) {
+async function createAppSession(participantA, participantB, ws, wallet) {
   try {
     console.log(`Creating app session between ${participantA} and ${participantB}`);
     
@@ -701,9 +710,22 @@ async function createAppSession(participantA, participantB, ws, wallet, tokenAdd
       nonce: Date.now(),
     };
     
-    // Initial allocations and intent (e.g., 1 USDC with 6 decimals)
-    const amount = 1000000;
-    const initialIntent = [amount, 0];
+    // Define the allocations with asset type (e.g., 1 USDC with 6 decimals)
+    const amount = '1000000';
+    
+    // Define allocations
+    const allocations = [
+      {
+        participant: participantA,
+        asset: 'usdc',
+        amount: amount,
+      },
+      {
+        participant: participantB,
+        asset: 'usdc',
+        amount: '0',
+      },
+    ];
     
     // Create the signed message
     const signedMessage = await createAppSessionMessage(
@@ -711,11 +733,9 @@ async function createAppSession(participantA, participantB, ws, wallet, tokenAdd
       [
         {
           definition: appDefinition,
-          token: tokenAddress,
-          allocations: [amount, 0],
+          allocations: allocations,
         },
-      ],
-      initialIntent
+      ]
     );
     
     // Send the message and wait for response
@@ -735,14 +755,14 @@ async function createAppSession(participantA, participantB, ws, wallet, tokenAdd
             // Remove the listener once we get the response
             ws.removeListener('message', handleAppSessionResponse);
             
-            // Extract app ID from response
-            const appId = message.res[2]?.[0]?.app_id;
-            if (!appId) {
-              reject(new Error('Failed to get app ID from response'));
+            // Extract app session ID from response
+            const appSessionId = message.res[2]?.[0]?.app_session_id;
+            if (!appSessionId) {
+              reject(new Error('Failed to get app session ID from response'));
               return;
             }
             
-            resolve(appId);
+            resolve(appSessionId);
           }
           
           // Check for error responses
@@ -776,13 +796,12 @@ async function createAppSession(participantA, participantB, ws, wallet, tokenAdd
 // Usage example
 const participantA = '0x1234...';  // Your address
 const participantB = '0x5678...';  // Other participant's address
-const tokenAddress = '0xUSdC...';  // Token address
 
 // Assuming you have a WebSocket connection and wallet initialized
-createAppSession(participantA, participantB, ws, wallet, tokenAddress)
-  .then(appId => {
-    console.log(`Application session created with ID: ${appId}`);
-    // Store the app ID for future reference
+createAppSession(participantA, participantB, ws, wallet)
+  .then(appSessionId => {
+    console.log(`Application session created with ID: ${appSessionId}`);
+    // Store the app session ID for future reference
   })
   .catch(error => {
     console.error('Failed to create application session:', error);
@@ -818,12 +837,6 @@ export async function createAppSession(roomId, participantA, participantB, ws, w
     // Get the server's address
     const serverAddress = wallet.address;
     
-    // Use a specific token (e.g., USDC)
-    const tokenAddress = process.env.USDC_TOKEN_ADDRESS;
-    if (!tokenAddress) {
-      throw new Error('Token address not set in environment variables');
-    }
-    
     // Create app definition with server as a participant
     // In this setup, the server acts as a referee/facilitator
     const appDefinition = {
@@ -835,8 +848,24 @@ export async function createAppSession(roomId, participantA, participantB, ws, w
       nonce: Date.now(),
     };
     
-    // Initial allocations (starting with zero balances)
-    const initialIntent = [0, 0, 0];
+    // Define allocations with asset type
+    const allocations = [
+      {
+        participant: participantA,
+        asset: 'usdc',
+        amount: '0',
+      },
+      {
+        participant: participantB,
+        asset: 'usdc',
+        amount: '0',
+      },
+      {
+        participant: serverAddress,
+        asset: 'usdc',
+        amount: '0',
+      },
+    ];
     
     // Message signer function
     const messageSigner = async (payload) => {
@@ -858,11 +887,9 @@ export async function createAppSession(roomId, participantA, participantB, ws, w
       [
         {
           definition: appDefinition,
-          token: tokenAddress,
-          allocations: [0, 0, 0],
+          allocations: allocations,
         },
-      ],
-      initialIntent
+      ]
     );
     
     // Send the message and wait for response
@@ -882,10 +909,10 @@ export async function createAppSession(roomId, participantA, participantB, ws, w
             // Remove the listener once we get the response
             ws.removeListener('message', handleAppSessionResponse);
             
-            // Extract app ID from response
-            const appId = message.res[2]?.[0]?.app_id;
-            if (!appId) {
-              reject(new Error('Failed to get app ID from response'));
+            // Extract app session ID from response
+            const appSessionId = message.res[2]?.[0]?.app_session_id;
+            if (!appSessionId) {
+              reject(new Error('Failed to get app session ID from response'));
               return;
             }
             
@@ -894,16 +921,15 @@ export async function createAppSession(roomId, participantA, participantB, ws, w
             
             // Store the app session for this room
             roomAppSessions.set(roomId, {
-              appId,
+              appSessionId,
               status,
               participantA,
               participantB,
               serverAddress,
-              tokenAddress,
               createdAt: Date.now()
             });
             
-            resolve(appId);
+            resolve(appSessionId);
           }
           
           // Check for error responses
@@ -968,9 +994,10 @@ When creating an application session, you need to define several key components:
 | **Quorum** | Required percentage for consensus | Usually `100` for full consensus |
 | **Challenge** | Time period for disputing state | `0` for no challenge period |
 | **Nonce** | Unique identifier | Typically `Date.now()` |
-| **Token** | The token address for the session | Address of USDC, ETH, etc. |
-| **Allocations** | Initial fund distribution | `[amount, 0]` for one-way funding |
-| **Intent** | Intended final distribution | Same as allocations for initial setup |
+| **Allocations** | Array of allocation objects with: | `[{ participant: "0xAddress", asset: "usdc", amount: "100" }]` |
+|            | - participant: Address of the participant | |
+|            | - asset: Asset identifier (e.g., "usdc", "eth") | |
+|            | - amount: String amount with precision | |
 
 ### Response Components
 
@@ -978,7 +1005,7 @@ When a ClearNode responds to your application session creation request, it provi
 
 | Component | Description | Example |
 |-----------|-------------|---------|
-| **app_id** | Unique identifier for the application session | `"0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79"` |
+| **app_session_id** | Unique identifier for the application session | `"0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79"` |
 | **status** | Current state of the application session | `"open"` |
 
 ## Understanding the Response
@@ -993,7 +1020,7 @@ When you create an application session, the ClearNode responds with information 
     "create_app_session", // Method name
     [
       {
-        "app_id": "0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79", // Session ID
+        "app_session_id": "0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79", // Session ID
         "status": "open"
       }
     ],
@@ -1003,7 +1030,7 @@ When you create an application session, the ClearNode responds with information 
 }
 ```
 
-The most important part of the response is the `app_id`, which you'll need for all future interactions with this application session.
+The most important part of the response is the `app_session_id`, which you'll need for all future interactions with this application session.
 
 ## Application Session Use Cases
 
@@ -1019,7 +1046,7 @@ Application sessions can be used for various scenarios:
 
 When working with application sessions, follow these best practices:
 
-1. **Store the app_id securely**: You'll need it for all session-related operations
+1. **Store the app_session_id securely**: You'll need it for all session-related operations
 2. **Verify session creation**: Check for successful creation before proceeding
 3. **Handle timeouts**: Implement proper timeout handling for session creation
 4. **Clean up listeners**: Always remove message event listeners to prevent memory leaks

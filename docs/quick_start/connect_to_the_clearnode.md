@@ -19,7 +19,6 @@ A **[ClearNode](https://github.com/erc7824/clearnode)** is an implementation of 
 - **Multi-Chain Support**: Connect to multiple EVM blockchains (Polygon, Celo, Base)
 - **Off-Chain Payments**: Efficient payment channels for high-throughput transactions
 - **Virtual Applications**: Create multi-participant applications
-- **Message Forwarding**: Bi-directional message routing between application participants
 - **Quorum-Based Signatures**: Support for multi-signature schemes with weight-based quorums
 
 ## Understanding NitroliteRPC
@@ -396,34 +395,7 @@ ws.onmessage = async (event) => {
 After authenticating with a ClearNode, you can request information about your channels. This is useful to verify your connection is working correctly and to retrieve channel data.
 
 ```javascript
-import { ethers } from 'ethers';
-import { generateRequestId, getCurrentTimestamp } from '@erc7824/nitrolite';
-
-// Function to create get_channels request
-async function createGetChannelsMessage(signer, address) {
-  // Create request data
-  const requestId = generateRequestId();
-  const method = 'get_channels';
-  const params = [{ acc: address }];
-  const timestamp = getCurrentTimestamp();
-  
-  // Create the request structure
-  const requestData = [requestId, method, params, timestamp];
-  
-  // Create the full request object
-  const request = { req: requestData };
-  
-  // Sign the request
-  const message = JSON.stringify(request);
-  const digestHex = ethers.id(message);
-  const messageBytes = ethers.getBytes(digestHex);
-  const { serialized: signature } = signer.wallet.signingKey.sign(messageBytes);
-  
-  // Add signature to the request
-  request.sig = [signature];
-  
-  return JSON.stringify(request);
-}
+import { createGetChannelsMessage } from '@erc7824/nitrolite';
 
 // Example of using the function after authentication is complete
 ws.addEventListener('message', async (event) => {
@@ -433,9 +405,19 @@ ws.addEventListener('message', async (event) => {
   if (message.res && message.res[1] === 'auth_success') {
     console.log('Successfully authenticated, requesting channel information...');
     
-    // Request channel information
+    // Create a custom message signer function if you don't already have one
+    const messageSigner = async (payload) => {
+      // This is the same message signer function used in authentication
+      const message = JSON.stringify(payload);
+      const digestHex = ethers.id(message);
+      const messageBytes = ethers.getBytes(digestHex);
+      const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
+      return signature;
+    };
+    
+    // Request channel information using the built-in helper function
     const getChannelsMsg = await createGetChannelsMessage(
-      client.stateWalletClient,
+      messageSigner,
       client.stateWalletClient.account.address
     );
     
@@ -445,17 +427,21 @@ ws.addEventListener('message', async (event) => {
   // Handle get_channels response
   if (message.res && message.res[1] === 'get_channels') {
     console.log('Received channels information:');
-    const channels = message.res[2];
+    const channelsList = message.res[2][0]; // Note the response format has changed
     
-    if (channels && channels.length > 0) {
-      channels.forEach((channel, index) => {
+    if (channelsList && channelsList.length > 0) {
+      channelsList.forEach((channel, index) => {
         console.log(`Channel ${index + 1}:`);
         console.log(`- Channel ID: ${channel.channel_id}`);
         console.log(`- Status: ${channel.status}`);
         console.log(`- Participant: ${channel.participant}`);
         console.log(`- Token: ${channel.token}`);
         console.log(`- Amount: ${channel.amount}`);
-        console.log(`- Network ID: ${channel.network_id}`);
+        console.log(`- Chain ID: ${channel.chain_id}`);
+        console.log(`- Adjudicator: ${channel.adjudicator}`);
+        console.log(`- Challenge: ${channel.challenge}`);
+        console.log(`- Nonce: ${channel.nonce}`);
+        console.log(`- Version: ${channel.version}`);
         console.log(`- Created: ${channel.created_at}`);
         console.log(`- Updated: ${channel.updated_at}`);
       });
@@ -464,6 +450,32 @@ ws.addEventListener('message', async (event) => {
     }
   }
 });
+```
+
+### Response Format
+
+The response to a `get_channels` request includes detailed information about each channel:
+
+```javascript
+{
+  "res": [1, "get_channels", [[  // Notice the nested array structure
+    {
+      "channel_id": "0xfedcba9876543210...",
+      "participant": "0x1234567890abcdef...",
+      "status": "open", // Can be "open", "closed", "settling", etc.
+      "token": "0xeeee567890abcdef...", // ERC20 token address
+      "amount": "100000", // Current channel balance
+      "chain_id": 137, // Chain ID (e.g., 137 for Polygon)
+      "adjudicator": "0xAdjudicatorContractAddress...", // Contract address
+      "challenge": 86400, // Challenge period in seconds
+      "nonce": 1,
+      "version": 2,
+      "created_at": "2023-05-01T12:00:00Z",
+      "updated_at": "2023-05-01T12:30:00Z"
+    }
+  ]], 1619123456789],
+  "sig": ["0xabcd1234..."]
+}
 ```
 
 ## Framework-Specific Integration
@@ -479,6 +491,7 @@ import { ethers } from 'ethers';
 import { 
   createAuthRequestMessage, 
   createAuthVerifyMessage,
+  createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
   generateRequestId, 
@@ -635,9 +648,13 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
   
   // Create helper methods for common operations
   const getChannels = useCallback(async () => {
-    const message = await createSignedRequest('get_channels', [{ acc: stateWallet.address }]);
+    // Using the built-in helper function from NitroliteRPC
+    const message = await createGetChannelsMessage(
+      messageSigner,
+      stateWallet.address
+    );
     return sendMessage(message);
-  }, [createSignedRequest, sendMessage, stateWallet]);
+  }, [messageSigner, sendMessage, stateWallet]);
   
   const getLedgerBalances = useCallback(async (channelId) => {
     // Using the built-in helper function from NitroliteRPC
@@ -710,6 +727,7 @@ import { ethers } from 'ethers';
 import { 
   createAuthRequestMessage, 
   createAuthVerifyMessage,
+  createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
   generateRequestId, 
@@ -854,10 +872,10 @@ export class ClearNodeService {
   
   // Helper methods for common operations
   async getChannels(stateWallet: any): Promise<boolean> {
-    const message = await this.createSignedRequest(
-      'get_channels', 
-      [{ acc: stateWallet.address }],
-      stateWallet
+    // Using the built-in helper function from NitroliteRPC
+    const message = await createGetChannelsMessage(
+      (payload) => this.messageSigner(payload, stateWallet),
+      stateWallet.address
     );
     return this.sendMessage(message);
   }
@@ -959,6 +977,7 @@ import { ethers } from 'ethers';
 import { 
   createAuthRequestMessage, 
   createAuthVerifyMessage,
+  createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
   generateRequestId, 
@@ -1097,7 +1116,11 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
   
   // Helper methods for common operations
   const getChannels = async () => {
-    const message = await createSignedRequest('get_channels', [{ acc: stateWallet.address }]);
+    // Using the built-in helper function from NitroliteRPC
+    const message = await createGetChannelsMessage(
+      messageSigner,
+      stateWallet.address
+    );
     return sendMessage(message);
   };
   
@@ -1373,7 +1396,36 @@ class ClearNodeConnection extends EventEmitter {
   
   // Helper methods for common operations
   async getChannels() {
-    return this.sendRequest('get_channels', [{ acc: this.stateWallet.address }]);
+    // Using the built-in helper function from NitroliteRPC
+    const message = await createGetChannelsMessage(
+      (payload) => this.messageSigner(payload),
+      this.stateWallet.address
+    );
+    
+    return new Promise((resolve, reject) => {
+      try {
+        const parsed = JSON.parse(message);
+        const requestId = parsed.req[0];
+        
+        const timeout = setTimeout(() => {
+          this.requestMap.delete(requestId);
+          reject(new Error('Request timeout for getChannels'));
+        }, 30000);
+        
+        this.requestMap.set(requestId, {
+          resolve: (response) => {
+            clearTimeout(timeout);
+            resolve(response);
+          },
+          reject,
+          timeout
+        });
+        
+        this.ws.send(message);
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
   
   async getLedgerBalances(channelId) {
@@ -1518,10 +1570,10 @@ async function main() {
     
     // Get channels
     const channels = await clearNode.getChannels();
-    console.log('Channels:', channels.res[2]);
+    console.log('Channels:', channels.res[2][0]);
     
     // Process the channels
-    const channelList = channels.res[2];
+    const channelList = channels.res[2][0];
     if (channelList && channelList.length > 0) {
       for (const channel of channelList) {
         console.log(`Channel ID: ${channel.channel_id}`);

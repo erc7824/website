@@ -42,40 +42,51 @@ function useCloseApplicationSession() {
       signer,
       sendRequest,
       appId,
-      finalAllocations,
-      tokenAddress
+      participantA,
+      participantB,
+      amount
     ) => {
       try {
         if (!appId) {
           throw new Error('Application ID is required to close the session.');
         }
         
+        // Create allocations with asset type
+        const allocations = [
+          {
+            participant: participantA,
+            asset: 'usdc',
+            amount: '0',
+          },
+          {
+            participant: participantB,
+            asset: 'usdc',
+            amount: amount,
+          },
+        ];
+        
         // Create the close request
         const closeRequest = {
-          app_id: appId,
-          allocations: finalAllocations,
+          app_session_id: appId,
+          allocations: allocations,
         };
-        
-        // The final intent should match the allocations in most cases
-        const finalIntent = finalAllocations;
         
         // Create the signed message
         const signedMessage = await createCloseAppSessionMessage(
           signer.sign, 
-          [closeRequest], 
-          finalIntent
+          [closeRequest]
         );
         
         // Send the request and wait for response
         const response = await sendRequest(signedMessage);
         
         // Check for success
-        if (response && response[0] && response[0].app_id) {
+        if (response && response[0] && response[0].app_session_id) {
           // Clean up local storage
-          localStorage.removeItem('app_id');
+          localStorage.removeItem('app_session_id');
           return { 
             success: true, 
-            app_id: response[0].app_id,
+            app_id: response[0].app_session_id,
             status: response[0].status || "closed", 
             response 
           };
@@ -130,18 +141,23 @@ function MyComponent() {
       });
     };
     
-    // Get the app ID from where it was stored
-    const appId = localStorage.getItem('app_id');
+    // Get the app session ID from where it was stored
+    const appId = localStorage.getItem('app_session_id');
     
-    // Define final allocations (e.g., [800000, 200000] for splitting funds)
-    const finalAllocations = [800000, 200000];
+    // Define participant addresses
+    const participantA = '0xYourAddress';
+    const participantB = '0xOtherAddress';
+    
+    // Define amount
+    const amount = '1000000'; // Amount to allocate to participantB
     
     const result = await closeApplicationSession(
       walletSigner,      // Your signer object
       sendRequest,       // Function to send the request
       appId,             // Application session ID
-      finalAllocations,  // Final fund allocations
-      '0xTokenAddress'   // Token address
+      participantA,      // First participant address
+      participantB,      // Second participant address
+      amount             // Amount to allocate to participant B
     );
     
     if (result.success) {
@@ -179,7 +195,7 @@ export class AppSessionService {
   
   constructor() {
     // Retrieve app ID from storage if available
-    const storedAppId = localStorage.getItem('app_id');
+    const storedAppId = localStorage.getItem('app_session_id');
     if (storedAppId) {
       this.appIdSubject.next(storedAppId);
     }
@@ -206,12 +222,14 @@ export class AppSessionService {
     return from(this.closeAppSessionAsync(
       signer,
       appId,
-      finalAllocations
+      participantA,
+      participantB,
+      amount
     )).pipe(
       tap(result => {
         if (result.success) {
           // Remove app ID from storage
-          localStorage.removeItem('app_id');
+          localStorage.removeItem('app_session_id');
           this.appIdSubject.next(null);
         }
       }),
@@ -225,17 +243,31 @@ export class AppSessionService {
   private async closeAppSessionAsync(
     signer: any,
     appId: string,
-    finalAllocations: number[]
+    participantA: string,
+    participantB: string,
+    amount: string
   ): Promise<any> {
     try {
+      // Create allocations with asset type
+      const allocations = [
+        {
+          participant: participantA,
+          asset: 'usdc',
+          amount: '0',
+        },
+        {
+          participant: participantB,
+          asset: 'usdc',
+          amount: amount,
+        },
+      ];
+      
       // Create close request
       const closeRequest = {
-        app_id: appId,
-        allocations: finalAllocations,
+        app_session_id: appId,
+        allocations: allocations,
       };
       
-      // Final intent matches allocations
-      const finalIntent = finalAllocations;
       
       // Create message signer function
       const messageSigner = async (payload: any) => {
@@ -249,8 +281,7 @@ export class AppSessionService {
       // Create the signed message
       const signedMessage = await createCloseAppSessionMessage(
         messageSigner,
-        [closeRequest],
-        finalIntent
+        [closeRequest]
       );
       
       // Send the message and wait for response
@@ -278,7 +309,7 @@ export class AppSessionService {
             this.webSocket?.removeEventListener('message', handleMessage);
             resolve({
               success: true,
-              app_id: message.res[2]?.[0]?.app_id || null,
+              app_id: message.res[2]?.[0]?.app_session_id || null,
               status: message.res[2]?.[0]?.status || "closed",
               response: message.res[2]
             });
@@ -403,8 +434,12 @@ export class AppSessionCloseComponent implements OnInit {
     this.error = null;
     this.success = false;
     
-    // Create final allocations array
-    const finalAllocations = [this.allocation1, this.allocation2];
+    // Define participants
+    const participantA = '0xYourAddress';
+    const participantB = '0xOtherAddress';
+    
+    // Create allocations with asset type
+    const amount = this.allocation2.toString();
     
     // Assuming you have access to a signer (e.g., from MetaMask)
     const signer = window.ethereum && new ethers.providers.Web3Provider(window.ethereum).getSigner();
@@ -418,7 +453,9 @@ export class AppSessionCloseComponent implements OnInit {
     this.appSessionService.closeApplicationSession(
       signer,
       this.appId,
-      finalAllocations
+      participantA,
+      participantB,
+      amount
     ).subscribe({
       next: (result) => {
         console.log('App session closed:', result);
@@ -509,7 +546,7 @@ export default defineComponent({
   name: 'AppSessionClose',
   
   setup() {
-    const appId = ref(localStorage.getItem('app_id') || null);
+    const appId = ref(localStorage.getItem('app_session_id') || null);
     const isClosing = ref(false);
     const error = ref(null);
     const success = ref(false);
@@ -616,7 +653,7 @@ export default defineComponent({
         
         if (response.success) {
           // Clean up local storage
-          localStorage.removeItem('app_id');
+          localStorage.removeItem('app_session_id');
           appId.value = null;
           success.value = true;
         } else {
@@ -641,7 +678,7 @@ export default defineComponent({
               
               resolve({
                 success: true,
-                app_id: message.res[2]?.[0]?.app_id || null,
+                app_id: message.res[2]?.[0]?.app_session_id || null,
                 status: message.res[2]?.[0]?.status || "closed",
                 response: message.res[2]
               });
@@ -756,17 +793,19 @@ import { ethers } from 'ethers';
 /**
  * Close an app session
  * @param {string} appId - The app session ID to close
- * @param {Array<number>} finalAllocations - Final allocation of funds [user, counterparty]
+ * @param {string} participantA - First participant's address
+ * @param {string} participantB - Second participant's address
+ * @param {string} amount - Amount to allocate to participant B
  * @param {WebSocket} ws - WebSocket connection to the ClearNode
  * @param {object} wallet - Ethers wallet for signing
  * @returns {Promise<boolean>} Success status
  */
-async function closeAppSession(appId, finalAllocations, ws, wallet) {
+async function closeAppSession(appId, participantA, participantB, amount, ws, wallet) {
   try {
-    console.log(`Closing app session ${appId} with allocations ${finalAllocations}`);
+    console.log(`Closing app session ${appId} with amount ${amount}`);
     
     if (!appId) {
-      throw new Error('App ID is required to close the session');
+      throw new Error('App session ID is required to close the session');
     }
     
     // Message signer function
@@ -783,20 +822,30 @@ async function closeAppSession(appId, finalAllocations, ws, wallet) {
       }
     };
     
+    // Create allocations with asset type
+    const allocations = [
+      {
+        participant: participantA,
+        asset: 'usdc',
+        amount: '0',
+      },
+      {
+        participant: participantB,
+        asset: 'usdc',
+        amount: amount,
+      },
+    ];
+    
     // Create the close request
     const closeRequest = {
-      app_id: appId,
-      allocations: finalAllocations,
+      app_session_id: appId,
+      allocations: allocations,
     };
-    
-    // The final intent is typically the same as the allocations
-    const finalIntent = finalAllocations;
     
     // Create the signed message
     const signedMessage = await createCloseAppSessionMessage(
       messageSigner, 
-      [closeRequest], 
-      finalIntent
+      [closeRequest]
     );
     
     // Send the message and wait for response
@@ -822,7 +871,7 @@ async function closeAppSession(appId, finalAllocations, ws, wallet) {
             
             resolve({
               success: true,
-              app_id: appId,
+              app_session_id: appId,
               status: status
             });
           }
@@ -857,10 +906,12 @@ async function closeAppSession(appId, finalAllocations, ws, wallet) {
 
 // Usage example
 const appId = '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
-const finalAllocations = [800000, 200000]; // 0.8 USDC to participant A, 0.2 to participant B
+const participantA = '0x1234...';  // Your address
+const participantB = '0x5678...';  // Other participant's address
+const amount = '200000'; // 0.2 USDC to participant B
 
 // Assuming you have a WebSocket connection and wallet initialized
-closeAppSession(appId, finalAllocations, ws, wallet)
+closeAppSession(appId, participantA, participantB, amount, ws, wallet)
   .then(result => {
     if (result.success) {
       console.log(`Application session ${result.app_id} closed successfully with status: ${result.status}`);
@@ -883,7 +934,7 @@ closeAppSession(appId, finalAllocations, ws, wallet)
  * @param {object} wallet - Ethers wallet for signing
  * @returns {Promise<boolean>} Success status
  */
-export async function closeAppSession(roomId, allocations, ws, wallet) {
+export async function closeAppSession(roomId, participantA, participantB, participantServer, amount, ws, wallet) {
   try {
     // Get the app session for this room
     const appSession = roomAppSessions.get(roomId);
@@ -892,14 +943,14 @@ export async function closeAppSession(roomId, allocations, ws, wallet) {
       return false;
     }
     
-    // Make sure appId exists
-    const appId = appSession.appId;
-    if (!appId) {
-      console.error(`No appId found in app session for room ${roomId}`);
+    // Make sure appSessionId exists
+    const appSessionId = appSession.appSessionId;
+    if (!appSessionId) {
+      console.error(`No appSessionId found in app session for room ${roomId}`);
       return false;
     }
     
-    console.log(`Closing app session ${appId} for room ${roomId}`);
+    console.log(`Closing app session ${appSessionId} for room ${roomId}`);
     
     // Message signer function
     const messageSigner = async (payload) => {
@@ -915,23 +966,35 @@ export async function closeAppSession(roomId, allocations, ws, wallet) {
       }
     };
     
-    // Final allocations and close request
-    const finalAllocations = allocations || [0, 0, 0]; // Default to zero allocations
+    // Create allocations with asset type
+    const allocations = [
+      {
+        participant: participantA,
+        asset: 'usdc',
+        amount: '0',
+      },
+      {
+        participant: participantB,
+        asset: 'usdc',
+        amount: amount,
+      },
+      {
+        participant: participantServer,
+        asset: 'usdc',
+        amount: '0',
+      },
+    ];
     
     // Create close request
     const closeRequest = {
-      app_id: appId,
-      allocations: finalAllocations,
+      app_session_id: appSessionId,
+      allocations: allocations,
     };
-    
-    // Final intent matches allocations
-    const finalIntent = finalAllocations;
     
     // Create the signed message
     const signedMessage = await createCloseAppSessionMessage(
       messageSigner, 
-      [closeRequest], 
-      finalIntent
+      [closeRequest]
     );
     
     // Send the message and wait for response
@@ -960,7 +1023,7 @@ export async function closeAppSession(roomId, allocations, ws, wallet) {
             
             resolve({
               success: true,
-              app_id: appId,
+              app_session_id: appId,
               status: status,
               roomId: roomId
             });
@@ -1002,22 +1065,37 @@ export async function closeAppSession(roomId, allocations, ws, wallet) {
 
 When closing an application session, you must specify the final allocations of funds between participants:
 
-- **Final Allocations**: An array of numbers representing token amounts for each participant
-- **Order**: The order matches the participants array from the original app definition
-- **Format**: Values should be in the smallest units of the token (e.g., for USDC with 6 decimals, 1 USDC = 1000000 units)
+- **Final Allocations**: An array of allocation objects for each participant
+- **Participant**: The address of the participant receiving funds
+- **Asset**: The asset type (e.g., "usdc", "eth")
+- **Amount**: The amount as a string (e.g., "1000000" or "0.5")
 
 Examples:
 
 ```javascript
-// Initial allocations when creating the session: [1000000, 0]
-// This represented 1 USDC for participant A, 0 for participant B
+// Initial allocations when creating the session:
+// [
+//   { participant: participantA, asset: "usdc", amount: "1000000" },
+//   { participant: participantB, asset: "usdc", amount: "0" }
+// ]
 
 // Possible final allocations when closing:
-const finalAllocations = [1000000, 0];     // No change - all funds to participant A
+const allocations = [
+  { participant: participantA, asset: "usdc", amount: "1000000" },
+  { participant: participantB, asset: "usdc", amount: "0" } 
+]; // No change - all funds to participant A
+
 // OR
-const finalAllocations = [0, 1000000];     // All funds to participant B
+const allocations = [
+  { participant: participantA, asset: "usdc", amount: "0" },
+  { participant: participantB, asset: "usdc", amount: "1000000" }
+]; // All funds to participant B
+
 // OR 
-const finalAllocations = [700000, 300000]; // Split 70/30
+const allocations = [
+  { participant: participantA, asset: "usdc", amount: "700000" },
+  { participant: participantB, asset: "usdc", amount: "300000" }
+]; // Split 70/30
 ```
 
 ## Understanding the Close Session Response
@@ -1032,7 +1110,7 @@ When you close an application session, the ClearNode responds with information a
     "close_app_session",  // Method name
     [
       {
-        "app_id": "0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79", // Session ID
+        "app_session_id": "0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79", // Session ID
         "status": "closed"
       }
     ],
@@ -1048,7 +1126,7 @@ When closing an application session, the ClearNode responds with:
 
 | Component | Description | Example |
 |-----------|-------------|---------|
-| **app_id** | Identifier of the application session | `"0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79"` |
+| **app_session_id** | Identifier of the application session | `"0x0ac588b2924edbbbe34bb4c51d089771bd7bd7018136c8c4317624112a8c9f79"` |
 | **status** | Final state of the application session | `"closed"` |
 
 ## Common Scenarios for Closing Sessions
@@ -1082,7 +1160,7 @@ When closing application sessions, you might encounter these issues:
 | Error Type | Description | Solution |
 |------------|-------------|----------|
 | **Authentication errors** | WebSocket connection loses authentication | Re-authenticate before closing the session |
-| **Session not found** | The app ID is invalid or the session was already closed | Verify the app ID is correct and the session is still active |
+| **Session not found** | The app_session_id is invalid or the session was already closed | Verify the app_session_id is correct and the session is still active |
 | **Allocation mismatch** | The total in final allocations doesn't match initial funding | Ensure allocations sum to the correct total amount |
 | **Connection issues** | WebSocket disconnects during a close request | Implement reconnection logic with exponential backoff |
 | **Timeout** | The ClearNode does not respond in a timely manner | Set appropriate timeouts and implement retry logic |
