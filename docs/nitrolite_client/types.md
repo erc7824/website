@@ -9,6 +9,56 @@ keywords: [erc7824, statechannels, state channels, nitrolite, ethereum scaling, 
 
 This page documents the core types used throughout the `@erc7824/nitrolite` SDK. Understanding these types is essential for effectively working with the `NitroliteClient`.
 
+<div align="center">
+```mermaid
+classDiagram
+    class ChannelState {
+        +turnNum: number
+        +isFinal: boolean
+        +appDefinition: address
+        +appData: bytes
+        +outcome: Outcome
+    }
+
+    class Outcome {
+        +assetType: AssetType
+        +allocations: Allocation[]
+    }
+
+    class Allocation {
+        +destination: address
+        +amount: uint256
+        +metadata: bytes
+    }
+
+    class AssetType {
+        <<enumeration>>
+        ETH
+        ERC20
+        ERC721
+    }
+
+    class StateSignature {
+        +signer: address
+        +signature: bytes
+    }
+
+    class Channel {
+        +participants: address[]
+        +channelNonce: uint256
+        +chainId: uint256
+        +states: ChannelState[]
+        +signatures: StateSignature[]
+    }
+
+    Channel "1" *-- "many" ChannelState
+    Channel "1" *-- "many" StateSignature
+    ChannelState "1" *-- "1" Outcome
+    Outcome "1" *-- "many" Allocation
+    Outcome "1" *-- "1" AssetType
+```
+</div>
+
 ## Core Types
 
 ### ChannelId
@@ -99,16 +149,16 @@ Represents a complete state channel state, including allocations and signatures.
 interface NitroliteClientConfig {
   // Required: viem PublicClient for reading blockchain data
   publicClient: PublicClient;
-  
+
   // Required: viem WalletClient for sending transactions and account context
   walletClient: WalletClient<Transport, Chain, ParseAccount<Account>>;
-  
+
   // Optional: Separate wallet client for signing states
   stateWalletClient?: WalletClient<Transport, Chain, ParseAccount<Account>>;
-  
+
   // Required: Contract addresses
   addresses: ContractAddresses;
-  
+
   // Required: Challenge duration in seconds
   challengeDuration?: bigint;
 }
@@ -230,10 +280,10 @@ const allowance: bigint = await client.getTokenAllowance()
 
 ```typescript
 // Create channel
-const result: { 
-  channelId: ChannelId; 
-  initialState: State; 
-  txHash: Hash 
+const result: {
+  channelId: ChannelId;
+  initialState: State;
+  txHash: Hash
 } = await client.createChannel({
   initialAllocationAmounts: [bigint, bigint],
   stateData: Hex

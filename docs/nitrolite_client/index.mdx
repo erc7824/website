@@ -11,6 +11,53 @@ import { Card, CardGrid } from '@site/src/components/Card';
 
 The `NitroliteClient` class is the main entry point for interacting with Nitrolite state channels. It provides a comprehensive set of methods for managing channels, deposits, and funds.
 
+<div align="center">
+```mermaid
+flowchart TB
+    User["User Application"]
+
+    subgraph Client["Nitrolite Client"]
+        API["Client API"]
+        NService["Nitrolite Service"]
+        ERC20Service["ERC20 Service"]
+        Wallet["State Wallet"]
+    end
+
+    subgraph Communication["Communication Layer"]
+        RPC["Nitrolite RPC"]
+        Messaging["Message Creation API"]
+    end
+
+    subgraph External["External Components"]
+        ClearNode["ClearNode"]
+        Blockchain["Blockchain"]
+        NitroContract["Nitro Contract"]
+        Token["Token Contract"]
+    end
+
+    User <--> API
+    API <--> NService
+    API <--> ERC20Service
+    NService <--> Wallet
+    ERC20Service <--> Wallet
+    Wallet <--> RPC
+    RPC <--> Messaging
+    Messaging <--> ClearNode
+    Messaging <--> Blockchain
+    ClearNode <--> Blockchain
+    Blockchain <--> NitroContract
+    Blockchain <--> Token
+
+    classDef clientNode fill:#d0e8ff,stroke:#3080cf
+    classDef commNode fill:#ffe8d0,stroke:#cf8030
+    classDef extNode fill:#d0ffe8,stroke:#30cf80
+
+    class API,NService,ERC20Service,Wallet clientNode
+    class RPC,Messaging commNode
+    class ClearNode,Blockchain,NitroContract,Token extNode
+```
+</div>
+
 <CardGrid cols={2}>
   <Card
     title="Methods"
