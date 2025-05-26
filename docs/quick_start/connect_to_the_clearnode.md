@@ -1640,5 +1640,5 @@ After successfully connecting to a ClearNode, you can:
 
 1. [View and manage channel assets](balances)
 2. [Create an application session](application_session)
-3. [Start transacting off-chain](application_session#sending-transactions)
+3. [Start transacting off-chain](application_session)
 4. [Explore advanced channel operations](resize_channel)
