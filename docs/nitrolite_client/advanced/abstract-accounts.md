@@ -33,7 +33,7 @@ These methods allow you to prepare transactions for the entire channel lifecycle
 
 <MethodDetails
   name="prepareDepositTransactions"
-  description="Prepares deposit transactions for sending tokens to the custody contract. May include an ERC-20 approval transaction if the current allowance is insufficient. Returns an array of transactions that must all be executed for the deposit to succeed."
+  description="Prepares deposit transactions for sending tokens to the custody contract. May include an [ERC-20](https://eips.ethereum.org/EIPS/eip-20) approval transaction if the current allowance is insufficient. Returns an array of transactions that must all be executed for the deposit to succeed."
   params={[{ name: "amount", type: "bigint" }]}
   returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)[]>`}
   example={`// Prepare deposit transaction(s) - may include ERC20 approval
@@ -51,7 +51,7 @@ for (const tx of txs) {
 
 <MethodDetails
   name="prepareApproveTokensTransaction"
-  description="Prepares a transaction to approve the custody contract to spend ERC-20 tokens. This is useful when you want to separate approval from the actual deposit operation or when implementing a custom approval flow."
+  description="Prepares a transaction to approve the custody contract to spend [ERC-20](https://eips.ethereum.org/EIPS/eip-20) tokens. This is useful when you want to separate approval from the actual deposit operation or when implementing a custom approval flow."
   params={[{ name: "amount", type: "bigint" }]}
   returns={`Promise<[PreparedTransaction](../types.md#preparedtransaction)>`}
   example={`// Prepare approval transaction

@@ -27,7 +27,7 @@ Implementation details and technical questions for developers building with Nitr
   <li><strong>Array-based structure</strong> ensures deterministic serialization across JSON implementations</li>
   <li><strong>Timestamp validation</strong> with 60-second expiry prevents replay attacks</li>
   <li><strong>Session-based routing</strong> via <code>AppSessionID</code> for virtual application isolation</li>
-  <li><strong>Challenge-response authentication</strong> using EIP-712 structured signing</li>
+  <li><strong>Challenge-response authentication</strong> using [EIP-712](https://eips.ethereum.org/EIPS/eip-712) structured signing</li>
 </ul>
 
   </div>
@@ -36,7 +36,7 @@ Implementation details and technical questions for developers building with Nitr
 <details>
   <summary><strong>How does signature verification work across different chains?</strong></summary>
   <div>
-    <p>Nitrolite uses <strong>chain-agnostic signature verification</strong> without EIP-191 prefixing:</p>
+    <p>Nitrolite uses <strong>chain-agnostic signature verification</strong> without [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefixing:</p>
 
 ```go
 // Raw ECDSA signing without chain-specific prefixes
@@ -198,7 +198,7 @@ function challenge(bytes32 channelId, State calldata candidate, State[] calldata
 <p><strong>Implementation:</strong></p>
 <ul>
   <li><strong>Signer mapping</strong>: <code>signers</code> table maps session keys to wallet addresses</li>
-  <li><strong>Authentication flow</strong>: EIP-712 structured signing for challenge-response</li>
+  <li><strong>Authentication flow</strong>: [EIP-712](https://eips.ethereum.org/EIPS/eip-712) structured signing for challenge-response</li>
   <li><strong>Session management</strong>: 24-hour TTL with renewal capability</li>
   <li><strong>Scope limitation</strong>: Session keys cannot withdraw funds, only sign state updates</li>
 </ul>

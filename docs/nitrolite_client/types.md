@@ -94,7 +94,7 @@ Represents a cryptographic signature used for signing state channel states.
 ```typescript
 interface Allocation {
   destination: Address;  // Where funds are sent on channel closure
-  token: Address;        // ERC-20 token address (zero address for ETH)
+  token: Address;        // [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token address (zero address for ETH)
   amount: bigint;        // Token amount allocated
 }
 ```

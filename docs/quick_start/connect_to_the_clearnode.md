@@ -256,7 +256,7 @@ const messageSigner = async (payload) => {
     const messageBytes = ethers.getBytes(digestHex);
     
     // Sign the bytes with the wallet's signing key
-    // Note: This uses the raw signing method, not the EIP-191 prefixed signing!
+    // Note: This uses the raw signing method, not the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefixed signing!
     const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
     
     return signature;
@@ -1632,7 +1632,7 @@ When working with ClearNodes and state channels, keep these security best practi
 | Authentication failure | Invalid state wallet, incorrect signing | Verify your state wallet is properly initialized and signing correctly |
 | Frequent disconnections | Unstable network, server-side issues | Monitor connection events and implement automatic reconnection |
 | Message delivery failures | Connection issues, invalid message format | Add message queuing and confirmation mechanism |
-| Invalid signature errors | EIP-191 prefix issues | Ensure you're signing raw message bytes without the EIP-191 prefix |
+| Invalid signature errors | [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix issues | Ensure you're signing raw message bytes without the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix |
 
 ## Next Steps
 

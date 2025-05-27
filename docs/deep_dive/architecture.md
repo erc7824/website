@@ -52,9 +52,9 @@ uint32 constant CHANRESIZE = 7883; // Resize state
 
 ### Chain-Agnostic Signature Model
 
-The protocol deliberately avoids EIP-191 message prefixing:
+The protocol deliberately avoids [EIP-191](https://eips.ethereum.org/EIPS/eip-191) message prefixing:
 
-> "For signature verification, the stateHash is bare signed without EIP-191 since the protocol is intended to be chain-agnostic."
+> "For signature verification, the stateHash is bare signed without [EIP-191](https://eips.ethereum.org/EIPS/eip-191) since the protocol is intended to be chain-agnostic."
 
 **Design Rationale**: This enables identical protocol logic across all EVM-compatible chains without modification, supporting the multi-chain vision where users can choose their preferred blockchain based on fees and speed.
 

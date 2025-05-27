@@ -22,7 +22,7 @@ The deposit phase includes methods for managing funds in the custody contract an
 
 <MethodDetails
   name="deposit"
-  description="Deposits tokens or ETH into the custody contract. Automatically handles ERC-20 approval if necessary. This is the first step in the channel lifecycle, as funds must be deposited before channels can be created. Funds deposited are held in a custody contract until they are allocated to channels or withdrawn."
+  description="Deposits tokens or ETH into the custody contract. Automatically handles [ERC-20](https://eips.ethereum.org/EIPS/eip-20) approval if necessary. This is the first step in the channel lifecycle, as funds must be deposited before channels can be created. Funds deposited are held in a custody contract until they are allocated to channels or withdrawn."
   params={[{ name: "amount", type: "bigint" }]}
   returns="Promise<Hash>"
   example={`await client.deposit(1_000_000_000_000_000_000n);`}
@@ -30,7 +30,7 @@ The deposit phase includes methods for managing funds in the custody contract an
 
 <MethodDetails
   name="approveTokens"
-  description="Manually approves the custody contract to spend the specified ERC-20 amount. While the deposit method handles approvals automatically, this method gives developers explicit control over token approvals. This is useful for implementing custom approval UX flows or for batching transactions with other operations."
+  description="Manually approves the custody contract to spend the specified [ERC-20](https://eips.ethereum.org/EIPS/eip-20) amount. While the deposit method handles approvals automatically, this method gives developers explicit control over token approvals. This is useful for implementing custom approval UX flows or for batching transactions with other operations."
   params={[{ name: "amount", type: "bigint" }]}
   returns="Promise<Hash>"
   example={`await client.approveTokens(2_000_000n);`}
@@ -38,14 +38,14 @@ The deposit phase includes methods for managing funds in the custody contract an
 
 <MethodDetails
   name="getTokenAllowance"
-  description="Gets the current allowance granted to the custody contract for the specified ERC20 token. This is useful for implementing proper UX around approvals, checking if a user needs to approve tokens before depositing, or verifying if existing approvals are sufficient for planned operations."
+  description="Gets the current allowance granted to the custody contract for the specified [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token. This is useful for implementing proper UX around approvals, checking if a user needs to approve tokens before depositing, or verifying if existing approvals are sufficient for planned operations."
   returns="Promise<bigint>"
   example={`const allowance = await client.getTokenAllowance();`}
 />
 
 <MethodDetails
   name="getTokenBalance"
-  description="Gets the on-chain balance of the specified ERC-20 token for the connected wallet address. This helps developers implement UX that shows users their available token balance before depositing, ensuring they have sufficient funds for the operation. It's particularly useful for validating input amounts in deposit forms."
+  description="Gets the on-chain balance of the specified [ERC-20](https://eips.ethereum.org/EIPS/eip-20) token for the connected wallet address. This helps developers implement UX that shows users their available token balance before depositing, ensuring they have sufficient funds for the operation. It's particularly useful for validating input amounts in deposit forms."
   returns="Promise<bigint>"
   example={`const balance = await client.getTokenBalance();`}
 />

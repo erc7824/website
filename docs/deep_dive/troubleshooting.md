@@ -302,7 +302,7 @@ if (balance.lt(requiredAmount)) {
 
 1. **Optimize Gas Settings:**
 ```javascript
-// Use EIP-1559 gas pricing
+// Use [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559) gas pricing
 const tx = await nitroliteClient.deposit({
   // ... other params
   maxFeePerGas: ethers.parseUnits('20', 'gwei'),

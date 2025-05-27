@@ -29,11 +29,11 @@ Nitrolite uses separate wallet clients for on-chain and off-chain operations for
 - **User Experience**: Allows state channel operations without requiring wallet confirmation for every message
 - **Persistence**: The state wallet needs to be accessible across sessions without requiring frequent user approval
 
-## The EIP-191 Prefix Issue
+## The [EIP-191](https://eips.ethereum.org/EIPS/eip-191) Prefix Issue
 
 A critical detail when implementing the state wallet is handling message signing correctly:
 
-- **Standard wallets** (like MetaMask) automatically add an EIP-191 prefix to messages (`"\x19Ethereum Signed Message:\n" + message.length + message`)
+- **Standard wallets** (like MetaMask) automatically add an [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix to messages (`"\x19Ethereum Signed Message:\n" + message.length + message`)
 - **State channel protocols** often require signing raw messages WITHOUT this prefix for consensus compatibility
 - **Nitrolite requires** direct signing of raw message bytes for correct off-chain state validation
 
@@ -98,13 +98,13 @@ async function initializeNitrolite() {
     const stateWalletAccount = privateKeyToAccount(stateWalletPrivateKey);
     
     // Create a state wallet client with the signing capabilities Nitrolite needs
-    // IMPORTANT: We need to sign raw messages WITHOUT the EIP-191 prefix
+    // IMPORTANT: We need to sign raw messages WITHOUT the [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix
     const stateWalletClient = {
       account: {
         address: stateWalletAccount.address,
       },
       signMessage: async ({ message: { raw } }) => {
-        // Using ethers.js to sign the raw message without EIP-191 prefix
+        // Using ethers.js to sign the raw message without [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix
         const wallet = new ethers.Wallet(stateWalletPrivateKey);
         const { serialized: signature } = wallet.signingKey.sign(raw);
         return signature;
