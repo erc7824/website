@@ -12,6 +12,40 @@ import MethodDetails from '@site/src/components/MethodDetails';
 
 The NitroliteRPC provides a secure, reliable real-time communication protocol for state channel applications. It enables off-chain message exchange, state updates, and channel management. This system is built around the `NitroliteRPC` class, which provides the foundational methods for message construction, signing, parsing, and verification.
 
+<div align="center">
+```mermaid
+sequenceDiagram
+    participant A as Alice
+    participant C as ClearNode
+    participant B as Bob
+
+    Note over A,B: Channel Creation
+    A->>C: CreateChannel(channelId, participants, allocation)
+    C->>B: NotifyChannelCreation(channelId, participants, allocation)
+    B->>C: AcknowledgeChannel(channelId)
+    C->>A: ChannelReady(channelId)
+
+    Note over A,B: Application Session
+    A->>C: ProposeAppSession(channelId, appDefinition)
+    C->>B: ForwardAppSession(channelId, appDefinition)
+    B->>C: AcceptAppSession(channelId, appDefinition)
+    C->>A: AppSessionAccepted(channelId)
+
+    Note over A,B: State Updates
+    A->>C: UpdateState(channelId, state, signature)
+    C->>B: ForwardStateUpdate(channelId, state, signature)
+    B->>C: CountersignState(channelId, state, signature)
+    C->>A: StateFinalized(channelId, state, signatures)
+
+    Note over A,B: Channel Closure
+    A->>C: ProposeClose(channelId, finalState)
+    C->>B: ForwardCloseProposal(channelId, finalState)
+    B->>C: AgreeToClose(channelId, finalState, signature)
+    C->>A: CloseApproved(channelId, signatures)
+    A->>C: SubmitClosure(channelId, finalState, signatures)
+```
+</div>
+
 <CardGrid cols={2}>
   <Card
     title="Message Creation API"

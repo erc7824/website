@@ -20,7 +20,7 @@ The NitroliteClient is built on top of specialized services that can be used dir
 
 ### Account Abstraction Integration
 
-- [Abstract Accounts](./abstract-accounts.md) - Using NitroliteClient with ERC-4337 Account Abstraction for smart contract wallets
+- [Abstract Accounts](./abstract-accounts.md) - Using NitroliteClient with [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) Account Abstraction for smart contract wallets
 
 ## When to Use Advanced Features
 

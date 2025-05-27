@@ -12,6 +12,37 @@ import TabItem from '@theme/TabItem';
 
 Creating a state channel involves depositing funds into a smart contract and establishing the channel parameters. This guide walks through the complete process of depositing USDC and creating a functional state channel.
 
+<div align="center">
+```mermaid
+flowchart TD
+    User["User Wallet"]
+    Chain["Blockchain"]
+    Contract["Nitro Contract"]
+    Channel["State Channel"]
+    Other["Other Participants"]
+
+    User -->|1\. Deposit| Chain
+    Chain -->|2\. Lock in Contract| Contract
+    Contract -->|3\. Channel Creation| Channel
+    Channel -->|4\. Off-chain Transfers| Channel
+    Channel -->|5\. Off-chain Exchange| Other
+    Channel -->|6\. Final State| Contract
+    Contract -->|7\. Release Funds| Chain
+    Chain -->|8\. Withdraw| User
+    Chain -->|9\. Withdraw| Other
+
+    classDef wallet fill:#ffcccc,stroke:#ff0000
+    classDef blockchain fill:#ccffcc,stroke:#00cc00
+    classDef contract fill:#ccccff,stroke:#0000ff
+    classDef channel fill:#ffffcc,stroke:#ffcc00
+
+    class User,Other wallet
+    class Chain blockchain
+    class Contract contract
+    class Channel channel
+```
+</div>
+
 ## Understanding State Channels in Nitrolite
 
 A state channel is a secure off-chain communication pathway between two participants:
@@ -65,7 +96,7 @@ const depositAmount = 100000000n; // 100 USDC (with 6 decimals)
 try {
   const depositTx = await client.deposit(depositAmount);
   console.log('Deposit transaction submitted:', depositTx);
-  
+
   // The deposit function waits for transaction confirmation internally
   console.log('USDC tokens successfully deposited to custody contract');
 } catch (error) {
@@ -82,7 +113,7 @@ try {
   // 1. Check current allowance
   const currentAllowance = await client.getTokenAllowance();
   console.log('Current USDC allowance:', currentAllowance);
-  
+
   // 2. Approve USDC if needed
   if (currentAllowance < depositAmount) {
     const approvalTx = await client.approveTokens(depositAmount);
@@ -90,7 +121,7 @@ try {
     // Wait for approval to be confirmed
     // (typically you would wait for the transaction to be mined)
   }
-  
+
   // 3. Deposit USDC
   const depositTx = await client.deposit(depositAmount);
   console.log('Deposit transaction submitted:', depositTx);
@@ -119,7 +150,7 @@ const channelParams = {
 try {
   // Create the channel
   const { channelId, initialState, txHash } = await client.createChannel(channelParams);
-  
+
   console.log('Channel created with ID:', channelId);
   console.log('Initial state:', initialState);
   console.log('Transaction hash:', txHash);
@@ -165,13 +196,13 @@ const channelParams = {
 };
 
 try {
-  const { 
-    channelId, 
-    initialState, 
-    depositTxHash, 
-    createChannelTxHash 
+  const {
+    channelId,
+    initialState,
+    depositTxHash,
+    createChannelTxHash
   } = await client.depositAndCreateChannel(depositAmount, channelParams);
-  
+
   console.log('USDC deposited with transaction:', depositTxHash);
   console.log('Channel created with ID:', channelId);
   console.log('Channel creation transaction:', createChannelTxHash);

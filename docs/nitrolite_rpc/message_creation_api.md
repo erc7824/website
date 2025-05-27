@@ -272,12 +272,6 @@ const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
 // Send resizeMsg via WebSocket
 `}
 />
-// ...existing code...
-// Assuming 'signer' and 'resizeParams' are defined
-const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
-// Send resizeMsg via WebSocket
-`}
-/>
 
 ## Advanced: Creating a Local Signer for Development
 
@@ -361,7 +355,7 @@ export const createEthersSigner = (privateKey: string): WalletSigner => {
                     const messageToSign = JSON.stringify(payload);
                     const messageHash = ethers.utils.id(messageToSign); // ethers.utils.id performs keccak256
                     const messageBytes = ethers.utils.arrayify(messageHash);
-                    
+
                     const flatSignature = await wallet._signingKey().signDigest(messageBytes);
                     const signature = ethers.utils.joinSignature(flatSignature);
                     return signature as Hex;
@@ -389,6 +383,6 @@ async function setupSigner() {
 ```
 
 **Important Considerations for `createEthersSigner`:**
-*   **Hashing Consistency:** The `sign` method within `createEthersSigner` must hash the payload in a way that is **identical** to how the `NitroliteRPC` class (specifically `NitroliteRPC.hashMessage`) expects messages to be hashed before signing. The example above uses `ethers.utils.id(JSON.stringify(payload))`. It's crucial to verify if the SDK's internal hashing uses a specific message prefix (e.g., EIP-191 personal_sign prefix) or a different serialization method. If the SDK does *not* use a standard EIP-191 prefix, or uses a custom one, your local signer's hashing logic must replicate this exactly for signatures to be valid. Using `NitroliteRPC.hashMessage(payload)` directly (if `payload` matches the `NitroliteRPCMessage` structure) is the safest way to ensure consistency.
+*   **Hashing Consistency:** The `sign` method within `createEthersSigner` must hash the payload in a way that is **identical** to how the `NitroliteRPC` class (specifically `NitroliteRPC.hashMessage`) expects messages to be hashed before signing. The example above uses `ethers.utils.id(JSON.stringify(payload))`. It's crucial to verify if the SDK's internal hashing uses a specific message prefix (e.g., [EIP-191](https://eips.ethereum.org/EIPS/eip-191) personal_sign prefix) or a different serialization method. If the SDK does *not* use a standard [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix, or uses a custom one, your local signer's hashing logic must replicate this exactly for signatures to be valid. Using `NitroliteRPC.hashMessage(payload)` directly (if `payload` matches the `NitroliteRPCMessage` structure) is the safest way to ensure consistency.
 *   **Type Compatibility:** Ensure the `Address` type expected by functions like `createAuthRequestMessage` is compatible with `localSigner.address`. The example uses `localSigner.address as Address` assuming `Address` is `0x${string}`.
 *   **Error Handling:** The provided examples include basic error logging. Robust applications should implement more sophisticated error handling.
