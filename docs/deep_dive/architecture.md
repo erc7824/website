@@ -77,25 +77,6 @@ type Entry struct {
 - **Compliance**: Follows established financial accounting practices
 - **Precision**: Uses decimal arithmetic to avoid floating-point errors in financial calculations
 
-## Technology Choice Rationale
-
-### Go for ClearNode Backend
-
-**Why Go over Node.js/Python/Rust?**
-- **Concurrency model**: Goroutines efficiently handle multiple blockchain event listeners simultaneously
-- **Memory efficiency**: Better resource usage for long-running services compared to Node.js
-- **Crypto libraries**: Excellent native support for ECDSA and Ethereum integration
-- **Operational simplicity**: Single binary deployment with built-in monitoring
-- **Network performance**: Superior WebSocket handling for real-time messaging requirements
-
-### TypeScript SDK Design
-
-**Why TypeScript over pure JavaScript?**
-- **Type safety**: Prevents runtime errors in financial applications
-- **Developer experience**: Excellent IDE support and autocomplete
-- **Viem integration**: Built on modern, well-maintained Ethereum libraries
-- **Multi-framework support**: Works with React, Vue, Angular without framework lock-in
-
 ## Security Architecture
 
 ### Challenge-Response Dispute Resolution
