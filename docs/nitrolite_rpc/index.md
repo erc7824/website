@@ -14,12 +14,12 @@ The NitroliteRPC provides a secure, reliable real-time communication protocol fo
 
 <CardGrid cols={2}>
   <Card
-    title="📨 Message Creation API"
+    title="Message Creation API"
     description="Detailed reference for functions that create specific RPC request messages."
     to="./message_creation_api"
   />
   <Card
-    title="📜 RPC Type Definitions"
+    title="RPC Type Definitions"
     description="Comprehensive documentation of all TypeScript types and interfaces used by the RPC system."
     to="./rpc_types"
   />
@@ -165,12 +165,12 @@ Dive deeper into the specifics of the RPC system:
 
 <CardGrid cols={2}>
   <Card
-    title="📨 Message Creation API Details"
+    title="Message Creation API Details"
     description="Explore the high-level functions for constructing various RPC requests."
     to="./message_creation_api"
   />
   <Card
-    title="📜 Browse All RPC Types"
+    title="Browse All RPC Types"
     description="Examine the detailed data structures and type definitions used in NitroliteRPC."
     to="./rpc_types"
   />

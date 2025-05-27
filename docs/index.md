@@ -15,52 +15,52 @@ The following guides will walk you through the complete lifecycle of state chann
 
 <CardGrid cols={2}>
   <Card 
-    title="🚀 Quick Start" 
+    title="Quick Start" 
     description="Set up your first Nitrolite application with step-by-step instructions."
     to="/quick_start"
   />
   <Card 
-    title="⚙️ Initialize the Client" 
+    title="Initialize the Client" 
     description="Configure the Nitrolite client to access state channel functionality."
     to="/quick_start/initializing_client"
   />
   <Card 
-    title="💰 Deposit And Create Channel" 
+    title="Deposit And Create Channel" 
     description="Fund your state channel with assets and establish a secure connection between participants."
     to="/quick_start/deposit_and_create_channel"
   />
   <Card 
-    title="🔗 Connect to the ClearNode" 
+    title="Connect to the ClearNode" 
     description="Establish connection with ClearNode for reliable off-chain transaction processing and verification."
     to="/quick_start/connect_to_the_clearnode"
   />
   <Card 
-    title="📊 Channel Assets" 
+    title="Channel Assets" 
     description="Monitor and manage the assets and allocations within your active state channels."
     to="/quick_start/balances"
   />
   <Card 
-    title="🎮 Create Application Session" 
+    title="Create Application Session" 
     description="Initialize a new application instance within your channel"
     to="/quick_start/application_session"
   />
   <Card 
-    title="🏁 Close Application Session" 
+    title="Close Application Session" 
     description="Properly finalize an application session while preserving final state and balances."
     to="/quick_start/close_session"
   />
   <Card 
-    title="📏 Resize Channel"
+    title="Resize Channel"
     description="Adjust the funds locked in a channel to accommodate changing transaction requirements."
     to="/quick_start/resize_channel"
   />
   <Card 
-    title="🔐 Close Channel"
+    title="Close Channel"
     description="Properly shut down a state channel and settle the final state on-chain."
     to="/quick_start/close_channel"
   />
   <Card 
-    title="💸 Withdrawal"
+    title="Withdrawal"
     description="Reclaim your funds from the state channel contract after channel closure."
     to="/quick_start/withdrawal"
   />
