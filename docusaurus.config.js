@@ -244,7 +244,7 @@ const config = {
                         items: [
                             {
                                 label: "GitHub",
-                                href: "https://github.com/erc7824/nitro",
+                                href: "https://github.com/erc7824/nitrolite",
                             },
                         ],
                     },
