@@ -33,11 +33,17 @@ Nitrolite uses separate wallet clients for on-chain and off-chain operations for
 
 A critical detail when implementing the state wallet is handling message signing correctly:
 
-- **Standard wallets** (like MetaMask) automatically add an EIP-191 prefix to messages (`"\x19Ethereum Signed Message:\n" + message.length + message`)
+- **Standard wallets** (like MetaMask) automatically add an [EIP-191](https://eips.ethereum.org/EIPS/eip-191) prefix to messages (`"\x19Ethereum Signed Message:\n" + message.length + message`)
 - **State channel protocols** often require signing raw messages WITHOUT this prefix for consensus compatibility
-- **Nitrolite requires** direct signing of raw message bytes for correct off-chain state validation
+- **Nitrolite requires** direct signing of state hash raw message bytes for correct off-chain state validation
 
-This is why we need to use a custom signing implementation with `wallet.signingKey.sign(raw)` rather than the standard `signMessage` method. Using the wrong signing method will cause channel operations to fail.
+This is why by default we use a version of viem's `signMessage` that does not include the EIP-191 prefix. In the same manner, you can use other implementations, although make sure they implement the following type:
+
+```ts
+type SignMessageFn = (args: { message: { raw: Hex } }) => Promise<Hex>;
+```
+
+Using the wrong signing method will cause channel operations to fail with errors related to signature verification. If you encounter such errors, much likely you are using the standard `signMessage`.
 
 ## Basic Client Initialization
 
