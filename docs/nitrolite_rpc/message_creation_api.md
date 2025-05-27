@@ -272,12 +272,6 @@ const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
 // Send resizeMsg via WebSocket
 `}
 />
-// ...existing code...
-// Assuming 'signer' and 'resizeParams' are defined
-const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
-// Send resizeMsg via WebSocket
-`}
-/>
 
 ## Advanced: Creating a Local Signer for Development
 
@@ -361,7 +355,7 @@ export const createEthersSigner = (privateKey: string): WalletSigner => {
                     const messageToSign = JSON.stringify(payload);
                     const messageHash = ethers.utils.id(messageToSign); // ethers.utils.id performs keccak256
                     const messageBytes = ethers.utils.arrayify(messageHash);
-                    
+
                     const flatSignature = await wallet._signingKey().signDigest(messageBytes);
                     const signature = ethers.utils.joinSignature(flatSignature);
                     return signature as Hex;
