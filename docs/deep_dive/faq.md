@@ -258,4 +258,4 @@ interface IAdjudicator {
 
 ---
 
-For additional technical details, consult the [Architecture Overview](../architecture/) or examine the [ClearNode source code](https://github.com/erc7824/nitrolite/tree/main/clearnode).
+For additional technical details, consult the [Architecture Overview](architecture/) or examine the [ClearNode source code](https://github.com/erc7824/nitrolite/tree/main/clearnode).
