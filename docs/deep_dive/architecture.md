@@ -167,23 +167,26 @@ for name, network := range config.networks {
 ### Centralization vs. User Experience
 
 **Trade-off**: Uses broker hub model instead of fully peer-to-peer architecture
-- **Cost**: Introduces potential central points of failure
-- **Benefit**: Dramatically improves UX (one channel vs. many), enables instant liquidity
-- **Mitigation**: Users retain custody through on-chain contracts; multiple brokers can compete
+
+Nitrolite's adoption of a broker hub model represents a fundamental architectural decision that prioritizes user experience over pure decentralization. While this approach introduces potential central points of failure where brokers could become unavailable or act maliciously, it delivers substantial user experience improvements by enabling users to maintain a single channel rather than managing multiple peer connections, while providing instant liquidity access to the entire network.
+
+The system mitigates centralization risks through economic incentives and technical safeguards. Users retain custody of their funds through on-chain smart contracts, ensuring that brokers cannot steal funds even if they act maliciously. Additionally, the protocol design allows multiple brokers to compete within the same ecosystem, preventing monopolization and providing users with choice in their infrastructure providers.
 
 ### Flexibility vs. Complexity
 
 **Trade-off**: Fixed 2-party channels instead of n-party support
-- **Cost**: Cannot directly support complex multi-party protocols
-- **Benefit**: Eliminates exponential complexity growth, easier security analysis
-- **Mitigation**: Virtual ledger channels enable arbitrary multi-party applications
+
+The decision to implement fixed 2-party channels rather than supporting arbitrary n-party configurations represents a calculated trade-off between flexibility and complexity management. While this constraint prevents direct support for complex multi-party protocols at the channel level, it eliminates the exponential complexity growth that plagues n-party state channel implementations, enabling easier security analysis and more reliable implementations.
+
+Virtual ledger channels provide an elegant solution to this limitation, allowing arbitrary multi-party applications to operate within the security guarantees of 2-party channels. This approach combines the simplicity and security of bilateral channels with the functionality required for complex distributed applications.
 
 ### Performance vs. Decentralization
 
 **Trade-off**: Go backend service instead of pure smart contract execution
-- **Cost**: Requires trust in ClearNode operators
-- **Benefit**: Enables complex business logic, high throughput, better UX
-- **Mitigation**: Challenge/response mechanism ensures trustless dispute resolution
+
+Utilizing a Go backend service rather than relying purely on smart contract execution introduces trust assumptions regarding ClearNode operators, as participants must trust that the service will process transactions honestly and remain available. However, this architectural choice enables the implementation of complex business logic that would be prohibitively expensive on-chain, achieves high transaction throughput measured in thousands of transactions per second, and delivers superior user experience through real-time interactions.
+
+The challenge/response mechanism provides critical protection against malicious operators by ensuring that all participants can validate and contest any state changes through cryptographically verifiable proofs. This trustless dispute resolution capability means that while participants must trust operators for liveness, they need not trust them for safety, as funds remain secure through on-chain enforcement.
 
 ## Protocol Innovation
 
