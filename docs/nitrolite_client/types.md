@@ -97,19 +97,32 @@ Represents a complete state channel state, including allocations and signatures.
 
 ```typescript
 interface NitroliteClientConfig {
-  // Required: viem PublicClient for reading blockchain data
+  /** The viem PublicClient for reading blockchain data. */
   publicClient: PublicClient;
-  
-  // Required: viem WalletClient for sending transactions and account context
+
+  /**
+   * The viem WalletClient used for:
+   * 1. Sending on-chain transactions in direct execution methods (e.g., `client.deposit`).
+   * 2. Providing the 'account' context for transaction preparation (`client.txPreparer`).
+   * 3. Signing off-chain states *if* `stateWalletClient` is not provided.
+   */
   walletClient: WalletClient<Transport, Chain, ParseAccount<Account>>;
-  
-  // Optional: Separate wallet client for signing states
+
+  /**
+   * Optional: A separate viem WalletClient used *only* for signing off-chain state updates (`signMessage`).
+   * Provide this if you want to use a different key (e.g., a "hot" key from localStorage)
+   * for state signing than the one used for on-chain transactions.
+   * If omitted, `walletClient` will be used for state signing.
+   */
   stateWalletClient?: WalletClient<Transport, Chain, ParseAccount<Account>>;
-  
-  // Required: Contract addresses
+
+  /** Contract addresses required by the SDK. */
   addresses: ContractAddresses;
-  
-  // Required: Challenge duration in seconds
+
+  /** Chain ID for the channel */
+  chainId: number;
+
+  /** Optional: Default challenge duration (in seconds) for new channels. Defaults to 0 if omitted. */
   challengeDuration?: bigint;
 }
 ```
@@ -162,9 +175,15 @@ interface ChallengeChannelParams {
 }
 
 interface ResizeChannelParams {
-  channelId: ChannelId;        // Channel ID to resize
-  candidateState: State;       // State with new allocations
-  proofStates?: State[];       // Optional proof states
+  resizeState: {
+    channelId: ChannelId;
+    stateData: Hex;
+    allocations: [Allocation, Allocation];
+    version: bigint;
+    intent: StateIntent;
+    serverSignature: Signature;
+  };
+  proofStates: State[];
 }
 ```
 
@@ -194,7 +213,6 @@ Parameters for collaboratively closing a channel.
 ```typescript
 interface AccountInfo {
   available: bigint;     // Available funds in the custody contract
-  locked: bigint;        // Funds locked in channels
   channelCount: bigint;  // Number of channels
 }
 ```
@@ -230,10 +248,10 @@ const allowance: bigint = await client.getTokenAllowance()
 
 ```typescript
 // Create channel
-const result: { 
-  channelId: ChannelId; 
-  initialState: State; 
-  txHash: Hash 
+const result: {
+  channelId: ChannelId;
+  initialState: State;
+  txHash: Hash
 } = await client.createChannel({
   initialAllocationAmounts: [bigint, bigint],
   stateData: Hex
@@ -245,20 +263,31 @@ const result: {
 ```typescript
 // Resize
 await client.resizeChannel({
-  channelId: ChannelId,
-  candidateState: State
+  resizeState: {
+    channelId: ChannelId,
+    stateData: Hex,
+    allocations: [Allocation, Allocation],
+    version: bigint,
+    intent: StateIntent,
+    serverSignature: Signature
+  },
+  proofStates: State[]
 }): Promise<Hash>
 
-// State is structured as:
-const state: State = {
-  intent: StateIntent.RESIZE,
-  version: 2n, // Incremented from previous
-  data: '0x1234',
-  allocations: [
-    { destination: addr1, token: tokenAddr, amount: 600000n },
-    { destination: addr2, token: tokenAddr, amount: 400000n }
-  ],
-  sigs: [signature1, signature2]
+// Resize is structured as:
+const resizeParams: ResizeChannelParams = {
+  resizeState: {
+    channelId,
+    stateData: '0x1234',
+    allocations: [
+      { destination: addr1, token: tokenAddr, amount: 600000n },
+      { destination: addr2, token: tokenAddr, amount: 400000n }
+    ],
+    version: 2n, // Incremented from previous
+    intent: StateIntent.RESIZE,
+    serverSignature: signature
+  },
+  proofStates: []
 }
 ```
 
