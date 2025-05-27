@@ -10,9 +10,10 @@ Implementation details and technical questions for developers building with Nitr
 
 ## Protocol Implementation
 
-### How does the ClearNode RPC protocol work?
-
-ClearNode uses JSON-RPC over WebSocket with deterministic array serialization:
+<details>
+  <summary><strong>How does the ClearNode RPC protocol work?</strong></summary>
+  <div>
+    <p>ClearNode uses JSON-RPC over WebSocket with deterministic array serialization:</p>
 
 ```json
 {
@@ -21,15 +22,21 @@ ClearNode uses JSON-RPC over WebSocket with deterministic array serialization:
 }
 ```
 
-**Key Features:**
-- **Array-based structure** ensures deterministic serialization across JSON implementations
-- **Timestamp validation** with 60-second expiry prevents replay attacks
-- **Session-based routing** via `AppSessionID` for virtual application isolation
-- **Challenge-response authentication** using EIP-712 structured signing
+<p><strong>Key Features:</strong></p>
+<ul>
+  <li><strong>Array-based structure</strong> ensures deterministic serialization across JSON implementations</li>
+  <li><strong>Timestamp validation</strong> with 60-second expiry prevents replay attacks</li>
+  <li><strong>Session-based routing</strong> via <code>AppSessionID</code> for virtual application isolation</li>
+  <li><strong>Challenge-response authentication</strong> using EIP-712 structured signing</li>
+</ul>
 
-### How does signature verification work across different chains?
+  </div>
+</details>
 
-Nitrolite uses **chain-agnostic signature verification** without EIP-191 prefixing:
+<details>
+  <summary><strong>How does signature verification work across different chains?</strong></summary>
+  <div>
+    <p>Nitrolite uses <strong>chain-agnostic signature verification</strong> without EIP-191 prefixing:</p>
 
 ```go
 // Raw ECDSA signing without chain-specific prefixes
@@ -37,15 +44,21 @@ messageHash := crypto.Keccak256Hash(stateBytes)
 signature, _ := crypto.Sign(messageHash.Bytes(), privateKey)
 ```
 
-**Implementation Details:**
-- **ECDSA with secp256k1** curve (Ethereum-compatible)
-- **Keccak256 hashing** for message digests
-- **65-byte signature format** (r,s,v) with v adjustment
-- **Address recovery** using `crypto.SigToPub()` for authentication
+<p><strong>Implementation Details:</strong></p>
+<ul>
+  <li><strong>ECDSA with secp256k1</strong> curve (Ethereum-compatible)</li>
+  <li><strong>Keccak256 hashing</strong> for message digests</li>
+  <li><strong>65-byte signature format</strong> (r,s,v) with v adjustment</li>
+  <li><strong>Address recovery</strong> using <code>crypto.SigToPub()</code> for authentication</li>
+</ul>
 
-### What is the channel state encoding format?
+  </div>
+</details>
 
-States are ABI-encoded with a specific structure:
+<details>
+  <summary><strong>What is the channel state encoding format?</strong></summary>
+  <div>
+    <p>States are ABI-encoded with a specific structure:</p>
 
 ```go
 // State encoding: (channelID, intent, version, stateData, allocations[])
@@ -58,17 +71,23 @@ args := abi.Arguments{
 }
 ```
 
-**Intent Types:**
-- `OPERATE(0)`: Normal application states
-- `INITIALIZE(1)`: Channel funding states  
-- `RESIZE(2)`: Capacity adjustment states
-- `FINALIZE(3)`: Channel closing states
+<p><strong>Intent Types:</strong></p>
+<ul>
+  <li><code>OPERATE(0)</code>: Normal application states</li>
+  <li><code>INITIALIZE(1)</code>: Channel funding states</li>
+  <li><code>RESIZE(2)</code>: Capacity adjustment states</li>
+  <li><code>FINALIZE(3)</code>: Channel closing states</li>
+</ul>
+
+  </div>
+</details>
 
 ## Virtual Ledger System
 
-### How does the double-entry accounting work?
-
-ClearNode implements traditional double-entry bookkeeping with DECIMAL(64,18) precision:
+<details>
+  <summary><strong>How does the double-entry accounting work?</strong></summary>
+  <div>
+    <p>ClearNode implements traditional double-entry bookkeeping with DECIMAL(64,18) precision:</p>
 
 ```sql
 CREATE TABLE ledger_entries (
@@ -80,20 +99,27 @@ CREATE TABLE ledger_entries (
 );
 ```
 
-**Balance Calculation:**
+<p><strong>Balance Calculation:</strong></p>
+
 ```go
 // Balance = SUM(credit) - SUM(debit) for each (wallet, asset) pair
 balance := totalCredits.Sub(totalDebits)
 ```
 
-**Account Types:**
-- **Participant accounts**: User wallet balances
-- **Virtual app accounts**: Isolated application contexts
-- **System accounts**: Protocol-level operations
+<p><strong>Account Types:</strong></p>
+<ul>
+  <li><strong>Participant accounts</strong>: User wallet balances</li>
+  <li><strong>Virtual app accounts</strong>: Isolated application contexts</li>
+  <li><strong>System accounts</strong>: Protocol-level operations</li>
+</ul>
 
-### How do virtual applications achieve consensus?
+  </div>
+</details>
 
-Virtual apps use **weighted quorum-based consensus** configured during channel creation:
+<details>
+  <summary><strong>How do virtual applications achieve consensus?</strong></summary>
+  <div>
+    <p>Virtual apps use <strong>weighted quorum-based consensus</strong> configured during channel creation:</p>
 
 ```go
 // Check if combined signature weights meet quorum threshold
@@ -102,7 +128,8 @@ if totalWeight < int64(appSession.Quorum) {
 }
 ```
 
-**Weight Configuration:**
+<p><strong>Weight Configuration:</strong></p>
+
 ```go
 type App struct {
     Participants []address  // Array of participants in the app
@@ -111,22 +138,30 @@ type App struct {
 }
 ```
 
-**Consensus Flow:**
-1. **State proposal** by any participant
-2. **Signature collection** from participants until weight threshold met
-3. **Validation** of weighted quorum achievement
-4. **Ledger update** with atomic balance transfers
+<p><strong>Consensus Flow:</strong></p>
+<ol>
+  <li><strong>State proposal</strong> by any participant</li>
+  <li><strong>Signature collection</strong> from participants until weight threshold met</li>
+  <li><strong>Validation</strong> of weighted quorum achievement</li>
+  <li><strong>Ledger update</strong> with atomic balance transfers</li>
+</ol>
 
-**Example Scenarios:**
-- **Simple majority**: Weights [50, 50], Quorum 51
-- **Supermajority**: Weights [25, 25, 25, 25], Quorum 75
-- **Dictator + veto**: Weights [80, 20], Quorum 100
+<p><strong>Example Scenarios:</strong></p>
+<ul>
+  <li><strong>Simple majority</strong>: Weights [50, 50], Quorum 51</li>
+  <li><strong>Supermajority</strong>: Weights [25, 25, 25, 25], Quorum 75</li>
+  <li><strong>Dictator + veto</strong>: Weights [80, 20], Quorum 100</li>
+</ul>
+
+  </div>
+</details>
 
 ## Security Model
 
-### How does challenge/response dispute resolution work?
-
-The system uses **optimistic execution** with challenge periods:
+<details>
+  <summary><strong>How does challenge/response dispute resolution work?</strong></summary>
+  <div>
+    <p>The system uses <strong>optimistic execution</strong> with challenge periods:</p>
 
 ```solidity
 function challenge(bytes32 channelId, State calldata candidate, State[] calldata proofs) external {
@@ -140,39 +175,58 @@ function challenge(bytes32 channelId, State calldata candidate, State[] calldata
 }
 ```
 
-**Security Guarantees:**
-- **Economic security**: Funds locked in custody contracts
-- **Temporal security**: Challenge periods prevent hasty closures
-- **Cryptographic security**: All state transitions require valid signatures
+<p><strong>Security Guarantees:</strong></p>
+<ul>
+  <li><strong>Economic security</strong>: Funds locked in custody contracts</li>
+  <li><strong>Temporal security</strong>: Challenge periods prevent hasty closures</li>
+  <li><strong>Cryptographic security</strong>: All state transitions require valid signatures</li>
+</ul>
 
-### How do session keys work?
+  </div>
+</details>
 
-Session keys enable **delegation without custody transfer**:
+<details>
+  <summary><strong>How do session keys work?</strong></summary>
+  <div>
+    <p>Session keys enable <strong>delegation without custody transfer</strong>:</p>
 
-```solidity
+```go
 // NOTE: it is allowed for depositor (and wallet) to be different from channel creator (participant)
 // This enables logic of "session keys" where a user can create a channel on behalf of another account
 ```
 
-**Implementation:**
-- **Signer mapping**: `signers` table maps session keys to wallet addresses
-- **Authentication flow**: EIP-712 structured signing for challenge-response
-- **Session management**: 24-hour TTL with renewal capability
-- **Scope limitation**: Session keys cannot withdraw funds, only sign state updates
+<p><strong>Implementation:</strong></p>
+<ul>
+  <li><strong>Signer mapping</strong>: <code>signers</code> table maps session keys to wallet addresses</li>
+  <li><strong>Authentication flow</strong>: EIP-712 structured signing for challenge-response</li>
+  <li><strong>Session management</strong>: 24-hour TTL with renewal capability</li>
+  <li><strong>Scope limitation</strong>: Session keys cannot withdraw funds, only sign state updates</li>
+</ul>
+
+  </div>
+</details>
 
 ## Performance and Scaling
 
-### What are the performance bottlenecks?
+<details>
+  <summary><strong>What are the performance bottlenecks?</strong></summary>
+  <div>
 
-**Identified Constraints:**
-- **Single WebSocket per wallet**: Limits concurrent connections
-- **Synchronous signature verification**: CPU-bound operation for each message
-- **Database balance queries**: Not cached, requires computation
-- **Memory-based sessions**: Cannot distribute across multiple ClearNode instances
+<p><strong>Identified Constraints:</strong></p>
+<ul>
+  <li><strong>Single WebSocket per wallet</strong>: Limits concurrent connections</li>
+  <li><strong>Synchronous signature verification</strong>: CPU-bound operation for each message</li>
+  <li><strong>Database balance queries</strong>: Not cached, requires computation</li>
+  <li><strong>Memory-based sessions</strong>: Cannot distribute across multiple ClearNode instances</li>
+</ul>
 
-### How does multi-chain asset handling work?
+  </div>
+</details>
 
-Each token-chain combination is treated as a distinct asset:
+<details>
+  <summary><strong>How does multi-chain asset handling work?</strong></summary>
+  <div>
+    <p>Each token-chain combination is treated as a distinct asset:</p>
 
 ```go
 type Asset struct {
@@ -183,25 +237,40 @@ type Asset struct {
 }
 ```
 
-**Precision Handling:**
-- **Consistent DECIMAL(64,18)** across all monetary calculations
-- **Chain-specific decimals** stored per asset
-- **Token address normalization** per chain
-- **Independent custody contracts** per supported chain
+<p><strong>Precision Handling:</strong></p>
+<ul>
+  <li><strong>Consistent DECIMAL(64,18)</strong> across all monetary calculations</li>
+  <li><strong>Chain-specific decimals</strong> stored per asset</li>
+  <li><strong>Token address normalization</strong> per chain</li>
+  <li><strong>Independent custody contracts</strong> per supported chain</li>
+</ul>
 
-### How does the system prevent replay attacks?
+  </div>
+</details>
 
-**Multi-layer Protection:**
-- **Timestamp validation**: Messages expire after 60 seconds
-- **State version monotonicity**: Version numbers must strictly increase
-- **Nonce progression**: Channel nonces prevent duplicate operations
-- **Challenge periods**: Time-locked dispute resolution
+<details>
+  <summary><strong>How does the system prevent replay attacks?</strong></summary>
+  <div>
+
+<p><strong>Multi-layer Protection:</strong></p>
+<ul>
+  <li><strong>Timestamp validation</strong>: Messages expire after 60 seconds</li>
+  <li><strong>State version monotonicity</strong>: Version numbers must strictly increase</li>
+  <li><strong>Nonce progression</strong>: Channel nonces prevent duplicate operations</li>
+  <li><strong>Challenge periods</strong>: Time-locked dispute resolution</li>
+</ul>
+
+  </div>
+</details>
 
 ## Integration Considerations
 
-### How do you handle WebSocket connection management?
+<details>
+  <summary><strong>How do you handle WebSocket connection management?</strong></summary>
+  <div>
 
-**Connection Lifecycle:**
+<p><strong>Connection Lifecycle:</strong></p>
+
 ```go
 // Authentication-first connection establishment
 func (h *UnifiedWSHandler) authenticateConnection(ws *websocket.Conn) error {
@@ -211,15 +280,23 @@ func (h *UnifiedWSHandler) authenticateConnection(ws *websocket.Conn) error {
 }
 ```
 
-**Features:**
-- **One connection per wallet**: Latest connection replaces previous
-- **Message forwarding**: Based on app session participants  
-- **Graceful error handling**: Structured error responses
-- **Metrics tracking**: Connections, messages, auth events
+<p><strong>Features:</strong></p>
+<ul>
+  <li><strong>One connection per wallet</strong>: Latest connection replaces previous</li>
+  <li><strong>Message forwarding</strong>: Based on app session participants</li>
+  <li><strong>Graceful error handling</strong>: Structured error responses</li>
+  <li><strong>Metrics tracking</strong>: Connections, messages, auth events</li>
+</ul>
 
-### What database schema optimizations are recommended?
+  </div>
+</details>
 
-**Critical Indexes:**
+<details>
+  <summary><strong>What database schema optimizations are recommended?</strong></summary>
+  <div>
+
+<p><strong>Critical Indexes:</strong></p>
+
 ```sql
 -- Balance calculation optimization
 CREATE INDEX idx_ledger_wallet_asset ON ledger_entries(wallet, asset_symbol);
@@ -231,14 +308,20 @@ CREATE INDEX idx_channels_participant ON channels(participant);
 CREATE INDEX idx_app_sessions_participants ON app_sessions USING gin(participants);
 ```
 
-**Schema Considerations:**
-- **DECIMAL precision**: Use DECIMAL(64,18) for all monetary values
-- **UUID vs incremental IDs**: UUIDs for app sessions, incremental for performance-critical tables
-- **Partitioning**: Consider partitioning ledger_entries by time for large deployments
+<p><strong>Schema Considerations:</strong></p>
+<ul>
+  <li><strong>DECIMAL precision</strong>: Use DECIMAL(64,18) for all monetary values</li>
+  <li><strong>UUID vs incremental IDs</strong>: UUIDs for app sessions, incremental for performance-critical tables</li>
+  <li><strong>Partitioning</strong>: Consider partitioning ledger_entries by time for large deployments</li>
+</ul>
 
-### How do you implement custom adjudicators?
+  </div>
+</details>
 
-Custom adjudicators must implement the `IAdjudicator` interface:
+<details>
+  <summary><strong>How do you implement custom adjudicators?</strong></summary>
+  <div>
+    <p>Custom adjudicators must implement the <code>IAdjudicator</code> interface:</p>
 
 ```solidity
 interface IAdjudicator {
@@ -250,11 +333,16 @@ interface IAdjudicator {
 }
 ```
 
-**Implementation Patterns:**
-- **Stateless validation**: Pure functions based on provided proofs
-- **State transition rules**: Validate moves from previous to current state
-- **Business logic**: Game rules, payment conditions, etc.
-- **Proof requirements**: Define what constitutes valid state transitions
+<p><strong>Implementation Patterns:</strong></p>
+<ul>
+  <li><strong>Stateless validation</strong>: Pure functions based on provided proofs</li>
+  <li><strong>State transition rules</strong>: Validate moves from previous to current state</li>
+  <li><strong>Business logic</strong>: Game rules, payment conditions, etc.</li>
+  <li><strong>Proof requirements</strong>: Define what constitutes valid state transitions</li>
+</ul>
+
+  </div>
+</details>
 
 ---
 
