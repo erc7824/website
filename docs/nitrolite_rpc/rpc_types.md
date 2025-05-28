@@ -249,9 +249,9 @@ const pingRequestMessage: NitroliteRPCMessage = {
 };
 
 // Example Application-Specific Request
-const appActionData: RequestData = [2, "app_action", [{ move: "rock" }], Date.now()];
+const appActionData: RequestData = [2, "message", [{ move: "rock" }], Date.now()];
 const appActionMessage: ApplicationRPCMessage = {
-  acc: "0xAppChannelId...",
+  sid: "0xAppSessionId...",
   req: appActionData,
   // sig: ["0xSignature..."]
 };

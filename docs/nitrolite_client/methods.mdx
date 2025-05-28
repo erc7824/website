@@ -110,8 +110,15 @@ The deposit phase includes methods for managing funds in the custody contract an
   params={[{ name: "params", type: "ResizeChannelParams" }]}
   returns="Promise<Hash>"
   example={`await client.resizeChannel({
-    channelId, // The ID of the channel to resize
-    candidateState // The latest state reflecting the new desired total allocation
+  resizeState: {
+    channelId,
+    stateData: '0x5678',
+    allocations: newAllocations,
+    version: 2n,
+    intent: StateIntent.RESIZE,
+    serverSignature: signature
+  },
+  proofStates: []
 });`}
 />
 
@@ -176,7 +183,13 @@ For Account Abstraction support and transaction preparation methods, see the [Ab
 import { NitroliteClient } from '@erc7824/nitrolite';
 
 // Initialize the client
-const client = new NitroliteClient({/* config */});
+const client = new NitroliteClient({
+  publicClient,
+  walletClient,
+  addresses: { custody, adjudicator, guestAddress, tokenAddress },
+  chainId: 137,
+  challengeDuration: 100n
+});
 
 // 1. Deposit funds
 const depositTxHash = await client.deposit(1000000n);
@@ -193,8 +206,15 @@ console.log(`Locked in channels: ${accountInfo.locked}`);
 
 // 4. Later, resize the channel
 const resizeTxHash = await client.resizeChannel({
-  channelId,
-  candidateState: updatedState // With new allocations
+  resizeState: {
+    channelId,
+    stateData: '0x5678',
+    allocations: newAllocations,
+    version: 2n,
+    intent: StateIntent.RESIZE,
+    serverSignature: signature
+  },
+  proofStates: []
 });
 
 // 5. Close the channel

@@ -115,36 +115,35 @@ Functions for retrieving information from the broker.
 
 <MethodDetails
   name="createGetConfigMessage"
-  description="Creates the signed, stringified message body for a 'get_config' request to retrieve broker or channel configuration."
+  description="Creates the signed, stringified message body for a 'get_config' request to retrieve broker configuration."
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
-    { name: "channelId", type: "AccountID", description: "The Channel ID or a general scope for configuration." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
   ]}
   returns="Promise<string>"
   example={`
 import { createGetConfigMessage } from "@erc7824/nitrolite";
-// Assuming 'signer' and 'channelId' are defined
-const getConfigMsg = await createGetConfigMessage(signer, channelId);
+// Assuming 'signer' is defined
+const getConfigMsg = await createGetConfigMessage(signer);
 // Send getConfigMsg via WebSocket
 `}
 />
 
 <MethodDetails
   name="createGetLedgerBalancesMessage"
-  description="Creates the signed, stringified message body for a 'get_ledger_balances' request to fetch balances for a specific ledger channel."
+  description="Creates the signed, stringified message body for a 'get_ledger_balances' request to fetch balances for a specific participant."
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
-    { name: "channelId", type: "AccountID", description: "The Channel ID to get ledger balances for." },
+    { name: "participant", type: "Address", description: "The participant address to get ledger balances for." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
   ]}
   returns="Promise<string>"
   example={`
 import { createGetLedgerBalancesMessage } from "@erc7824/nitrolite";
-// Assuming 'signer' and 'channelId' are defined
-const getBalancesMsg = await createGetLedgerBalancesMessage(signer, channelId);
+// Assuming 'signer' and 'participant' are defined
+const getBalancesMsg = await createGetLedgerBalancesMessage(signer, participant);
 // Send getBalancesMsg via WebSocket
 `}
 />
@@ -154,16 +153,34 @@ const getBalancesMsg = await createGetLedgerBalancesMessage(signer, channelId);
   description="Creates the signed, stringified message body for a 'get_app_definition' request to retrieve the definition of a specific application."
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
-    { name: "appId", type: "AccountID", description: "The Application ID to get the definition for." },
+    { name: "appSessionId", type: "AccountID", description: "The Application Session ID to get the definition for." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
   ]}
   returns="Promise<string>"
   example={`
 import { createGetAppDefinitionMessage } from "@erc7824/nitrolite";
-// Assuming 'signer' and 'appId' are defined
-const getAppDefMsg = await createGetAppDefinitionMessage(signer, appId);
+// Assuming 'signer' and 'appSessionId' are defined
+const getAppDefMsg = await createGetAppDefinitionMessage(signer, appSessionId);
 // Send getAppDefMsg via WebSocket
+`}
+/>
+
+<MethodDetails
+  name="createGetChannelsMessage"
+  description="Creates the signed, stringified message body for a 'get_channels' request to retrieve channels for a specific participant."
+  params={[
+    { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
+    { name: "participant", type: "Address", description: "The participant address to get channels for." },
+    { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
+    { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
+  ]}
+  returns="Promise<string>"
+  example={`
+import { createGetChannelsMessage } from "@erc7824/nitrolite";
+// Assuming 'signer' and 'participant' are defined
+const getChannelsMsg = await createGetChannelsMessage(signer, participant);
+// Send getChannelsMsg via WebSocket
 `}
 />
 
@@ -177,15 +194,14 @@ Functions for creating and closing application sessions (state channels).
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
     { name: "params", type: "CreateAppSessionRequest[]", description: "An array of parameters defining the application session(s) to be created. See RPC Type Definitions for `CreateAppSessionRequest` structure." },
-    { name: "intent", type: "Intent", description: "The initial allocation intent for the application session." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
   ]}
   returns="Promise<string>"
   example={`
-import { createAppSessionMessage, Intent } from "@erc7824/nitrolite";
-// Assuming 'signer', 'appSessionParams', and 'initialIntent' are defined
-const createAppMsg = await createAppSessionMessage(signer, appSessionParams, initialIntent);
+import { createAppSessionMessage } from "@erc7824/nitrolite";
+// Assuming 'signer' and 'appSessionParams' are defined
+const createAppMsg = await createAppSessionMessage(signer, appSessionParams);
 // Send createAppMsg via WebSocket
 `}
 />
@@ -196,15 +212,14 @@ const createAppMsg = await createAppSessionMessage(signer, appSessionParams, ini
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
     { name: "params", type: "CloseAppSessionRequest[]", description: "An array of parameters defining the application session(s) to be closed, including final allocations. See RPC Type Definitions for `CloseAppSessionRequest` structure." },
-    { name: "intent", type: "Intent", description: "The final allocation intent for the application session." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
   ]}
   returns="Promise<string>"
   example={`
-import { createCloseAppSessionMessage, Intent } from "@erc7824/nitrolite";
-// Assuming 'signer', 'closeParams', and 'finalIntent' are defined
-const closeAppMsg = await createCloseAppSessionMessage(signer, closeParams, finalIntent);
+import { createCloseAppSessionMessage } from "@erc7824/nitrolite";
+// Assuming 'signer' and 'closeParams' are defined
+const closeAppMsg = await createCloseAppSessionMessage(signer, closeParams);
 // Send closeAppMsg via WebSocket
 `}
 />
@@ -218,7 +233,7 @@ Function for sending messages within an active application session.
   description="Creates the signed, stringified message body for sending a generic 'message' within an active application session (state channel). This is used for off-chain state updates and other application-specific communication."
   params={[
     { name: "signer", type: "MessageSigner", description: "The function to sign the request payload." },
-    { name: "appId", type: "AccountID", description: "The Application ID (state channel ID) the message is scoped to." },
+    { name: "appSessionId", type: "Hex", description: "The Application Session ID the message is scoped to." },
     { name: "messageParams", type: "any[]", description: "The actual message content/parameters being sent, specific to the application logic." },
     { name: "requestId", type: "RequestID", description: "Optional request ID. Defaults to a generated ID.", optional: true },
     { name: "timestamp", type: "Timestamp", description: "Optional timestamp. Defaults to the current time.", optional: true }
@@ -226,8 +241,8 @@ Function for sending messages within an active application session.
   returns="Promise<string>"
   example={`
 import { createApplicationMessage } from "@erc7824/nitrolite";
-// Assuming 'signer', 'appId', and 'appSpecificMessageData' are defined
-const appMsg = await createApplicationMessage(signer, appId, [appSpecificMessageData]);
+// Assuming 'signer', 'appSessionId', and 'appSpecificMessageData' are defined
+const appMsg = await createApplicationMessage(signer, appSessionId, [appSpecificMessageData]);
 // Send appMsg via WebSocket
 `}
 />
@@ -249,8 +264,8 @@ Functions for managing the underlying ledger channels (direct channels with the 
   returns="Promise<string>"
   example={`
 import { createCloseChannelMessage } from "@erc7824/nitrolite";
-// Assuming 'signer', 'channelId', and 'destinationAddress' are defined
-const closeChannelMsg = await createCloseChannelMessage(signer, channelId, destinationAddress);
+// Assuming 'signer', 'channelId', and 'fundDestination' are defined
+const closeChannelMsg = await createCloseChannelMessage(signer, channelId, fundDestination);
 // Send closeChannelMsg via WebSocket
 `}
 />
@@ -267,12 +282,6 @@ const closeChannelMsg = await createCloseChannelMessage(signer, channelId, desti
   returns="Promise<string>"
   example={`
 import { createResizeChannelMessage } from "@erc7824/nitrolite";
-// Assuming 'signer' and 'resizeParams' are defined
-const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
-// Send resizeMsg via WebSocket
-`}
-/>
-// ...existing code...
 // Assuming 'signer' and 'resizeParams' are defined
 const resizeMsg = await createResizeChannelMessage(signer, resizeParams);
 // Send resizeMsg via WebSocket
@@ -361,7 +370,7 @@ export const createEthersSigner = (privateKey: string): WalletSigner => {
                     const messageToSign = JSON.stringify(payload);
                     const messageHash = ethers.utils.id(messageToSign); // ethers.utils.id performs keccak256
                     const messageBytes = ethers.utils.arrayify(messageHash);
-                    
+
                     const flatSignature = await wallet._signingKey().signDigest(messageBytes);
                     const signature = ethers.utils.joinSignature(flatSignature);
                     return signature as Hex;

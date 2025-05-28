@@ -45,6 +45,7 @@ const nitroliteClient = new NitroliteClient({
     guestAddress: '0x...',
     tokenAddress: '0x...'
   },
+  chainId: 137, // Polygon mainnet
   challengeDuration: 100n
 });
 
@@ -59,8 +60,15 @@ const { channelId, initialState, txHash } = await nitroliteClient.createChannel(
 
 // 3. Resize the channel when needed
 const resizeTxHash = await nitroliteClient.resizeChannel({
-  channelId,
-  candidateState: updatedState
+  resizeState: {
+    channelId,
+    stateData: '0x5678',
+    allocations: newAllocations,
+    version: 2n,
+    intent: StateIntent.RESIZE,
+    serverSignature: signature
+  },
+  proofStates: []
 });
 
 // 4. Close the channel
