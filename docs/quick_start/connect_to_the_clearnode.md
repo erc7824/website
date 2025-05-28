@@ -228,10 +228,11 @@ clearNodeConnection.disconnect();
 When connecting to a ClearNode, you need to follow a specific authentication flow using the NitroliteRPC utility to create properly formatted and signed messages:
 
 1. **Initial Connection**: The client establishes a WebSocket connection to the ClearNode's URL
-2. **Auth Request**: The client sends an `auth_request` message with its identity information
+2. **Auth Request**: On the first connection client sends an `auth_request` message with its identity information
 3. **Challenge**: The ClearNode responds with an `auth_challenge` containing a random nonce
 4. **Signature Verification**: The client signs the challenge using its state wallet and sends an `auth_verify` message
 5. **Auth Result**: The ClearNode verifies the signature and responds with `auth_success` or `auth_failure`
+6. **Reconnection**: On success ClearNode will return the JWT Token, which can be used for subsequent reconnections without needing to re-authenticate.
 
 This flow ensures that only authorized participants with valid signing keys can connect to the ClearNode and participate in channel operations.
 
@@ -331,6 +332,8 @@ ws.onmessage = async (event) => {
     else if (message.res && message.res[1] === 'auth_success') {
       console.log('Authentication successful');
       // Now you can start using the channel
+
+      window.localStorage.setItem('clearnode_jwt', message.res[2]["jwt_token"]); // Store JWT token for future use
     }
     else if (message.res && message.res[1] === 'auth_failure') {
       console.error('Authentication failed:', message.res[2]);
@@ -410,6 +413,73 @@ ws.onmessage = async (event) => {
       } else {
         console.error('Malformed challenge response');
       }
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+  }
+};
+```
+
+  </TabItem>
+  <TabItem value="reconnect" label="Reconnect">
+
+```javascript
+import { createAuthVerifyMessageWithJWT } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+
+// Important: Custom message signer that correctly hashes the message with ethers.id
+// This is crucial for proper ClearNode communication
+const messageSigner = async (payload) => {
+  try {
+    // Convert the payload to a JSON string
+    const message = JSON.stringify(payload);
+    
+    // Hash the message with ethers.id (keccak256 hash)
+    const digestHex = ethers.id(message);
+    
+    // Convert the hash to bytes
+    const messageBytes = ethers.getBytes(digestHex);
+    
+    // Sign the bytes with the wallet's signing key
+    // Note: This uses the raw signing method, not the EIP-191 prefixed signing!
+    const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
+    
+    return signature;
+  } catch (error) {
+    console.error("Error signing message:", error);
+    throw error;
+  }
+};
+
+// After WebSocket connection is established
+ws.onopen = async () => {
+  console.log('WebSocket connection established');
+  
+  // Step 1: Create and send auth_verify with JWT for reconnection
+  // Get the stored JWT token
+  const jwtToken = window.localStorage.getItem('clearnode_jwt');
+
+  const authRequestMsg = await createAuthVerifyMessageWithJWT(
+    messageSigner, // Our custom message signer function
+    jwtToken, // JWT token for reconnection
+    client.stateWalletClient.account.address // Client address
+  );
+  
+  ws.send(authRequestMsg);
+};
+
+// Handle incoming messages
+ws.onmessage = async (event) => {
+  try {
+    const message = JSON.parse(event.data);
+    
+    // Step 2: Handle auth_success or auth_failure
+    if (message.res && message.res[1] === 'auth_success') {
+      console.log('Authentication successful');
+      // Now you can start using the channel
+    }
+    else if (message.res && message.res[1] === 'auth_failure') {
+      console.error('Authentication failed:', message.res[2]);
     }
   } catch (error) {
     console.error('Error handling message:', error);
