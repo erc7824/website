@@ -407,5 +407,4 @@ When retrieving off-chain balances, you might encounter these common issues:
 Now that you understand how to monitor off-chain balances in your channels, you can:
 
 1. [Create an application session](application_session) to start transacting off-chain 
-2. [Resize your channel](resize_channel) if you need to adjust fund allocation
-3. Learn about [channel closing](close_session) when you're done with the channel
+2. Learn about [channel closing](close_session) when you're done with the channel

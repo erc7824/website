@@ -22,6 +22,14 @@ Closing an application session correctly is important because it:
 - Ensures the proper completion of all operations
 - Prevents potential disputes
 
+```mermaid
+graph TD
+    A[Active Session] --> B[Define Final Allocations]
+    B --> C[Sign Close Message]
+    C --> D[Send to ClearNode]
+    D --> E[Session Closed]
+```
+
 ## Closing an Application Session
 
 To close an application session, you'll use the `createCloseAppSessionMessage` helper from NitroliteRPC. Here's how to do it:
@@ -1061,6 +1069,20 @@ export async function closeAppSession(roomId, participantA, participantB, partic
   </TabItem>
 </Tabs>
 
+## Close Session Flow
+
+The following sequence diagram shows the interaction between your application and the ClearNode when closing a session:
+
+```mermaid
+sequenceDiagram
+    participant App as Your Application
+    participant CN as ClearNode
+    
+    App->>CN: Send close_app_session request
+    CN->>App: Return success response
+    App->>App: Clean up local storage
+```
+
 ## Understanding Final Allocations
 
 When closing an application session, you must specify the final allocations of funds between participants:
@@ -1171,6 +1193,5 @@ After closing an application session, you can:
 
 1. [Check your channel balances](balances) to verify the finalized allocations
 2. [Create a new application session](application_session) if you need to continue with different parameters
-3. [Close the channel](close_channel) if you're done with all interactions
 
 For more advanced scenarios, see our detailed documentation on state channel lifecycle management.

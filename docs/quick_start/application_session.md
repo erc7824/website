@@ -14,6 +14,13 @@ After connecting to a ClearNode and checking your channel balances, you can crea
 
 ## Understanding Application Sessions
 
+```mermaid
+graph TD
+    A[Create Application Session] --> B[Session Active]
+    B --> C[Off-Chain Transactions]
+    C --> D[Close Session]
+```
+
 Application sessions in Nitrolite allow you to:
 
 - Create isolated environments for specific interactions

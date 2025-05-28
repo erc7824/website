@@ -9,60 +9,40 @@ import { Card, CardGrid } from '@site/src/components/Card';
 
 # Introduction
 
-Welcome to Nitrolite! Built on the ERC-7824 standard, Nitrolite is a powerful state channel framework that enables developers to build high-performance decentralized applications with near-instant finality and minimal gas costs.
+Welcome to Nitrolite! Built on the ERC-7824 standard, Nitrolite is a powerful framework that enables developers to build high-performance decentralized applications with near-instant finality.
 
-The following guides will walk you through the complete lifecycle of state channels in Nitrolite, from client initialization to channel creation, application sessions, and final settlement. Whether you're building payment systems, games, financial applications, or any use case requiring high-frequency transactions, Nitrolite provides the infrastructure you need.
+The following guides will walk you through the complete lifecycle of Nitrolite applications, from client initialization to application sessions. Whether you're building payment systems, games, financial applications, or any use case requiring high-frequency transactions, Nitrolite provides the infrastructure you need.
 
 <CardGrid cols={2}>
   <Card 
-    title="Quick Start" 
+    title="Quick Start"
     description="Set up your first Nitrolite application with step-by-step instructions."
     to="/quick_start"
   />
   <Card 
-    title="Initialize the Client" 
-    description="Configure the Nitrolite client to access state channel functionality."
-    to="/quick_start/initializing_client"
+    title="Create a channel"
+    description="Visit apps.yellow.com to create a channel from your account. Manage your apps, and channel settings."
+    to="/quick_start/initializing_channel"
   />
   <Card 
-    title="Deposit And Create Channel" 
-    description="Fund your state channel with assets and establish a secure connection between participants."
-    to="/quick_start/deposit_and_create_channel"
-  />
-  <Card 
-    title="Connect to the ClearNode" 
+    title="Connect to the ClearNode"
     description="Establish connection with ClearNode for reliable off-chain transaction processing and verification."
     to="/quick_start/connect_to_the_clearnode"
   />
   <Card 
-    title="Channel Assets" 
+    title="Channel Assets"
     description="Monitor and manage the assets and allocations within your active state channels."
     to="/quick_start/balances"
   />
   <Card 
-    title="Create Application Session" 
-    description="Initialize a new application instance within your channel"
+    title="Create Application Session"
+    description="Initialize a new application instance"
     to="/quick_start/application_session"
   />
   <Card 
-    title="Close Application Session" 
-    description="Properly finalize an application session while preserving final state and balances."
+    title="Close Application Session"
+    description="Properly finalize an application session while preserving final state."
     to="/quick_start/close_session"
-  />
-  <Card 
-    title="Resize Channel"
-    description="Adjust the funds locked in a channel to accommodate changing transaction requirements."
-    to="/quick_start/resize_channel"
-  />
-  <Card 
-    title="Close Channel"
-    description="Properly shut down a state channel and settle the final state on-chain."
-    to="/quick_start/close_channel"
-  />
-  <Card 
-    title="Withdrawal"
-    description="Reclaim your funds from the state channel contract after channel closure."
-    to="/quick_start/withdrawal"
   />
 </CardGrid>
 

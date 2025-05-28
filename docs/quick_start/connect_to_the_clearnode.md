@@ -235,6 +235,36 @@ When connecting to a ClearNode, you need to follow a specific authentication flo
 
 This flow ensures that only authorized participants with valid signing keys can connect to the ClearNode and participate in channel operations.
 
+```mermaid
+sequenceDiagram
+    participant Client as Your Application
+    participant CN as ClearNode
+    
+    Client->>CN: WebSocket Connection Request
+    CN->>Client: Connection Established
+    
+    Client->>Client: Create auth_request with address
+    Client->>Client: Sign message with state wallet
+    Client->>CN: Send auth_request
+    
+    CN->>CN: Generate random challenge nonce
+    CN->>Client: Send auth_challenge with nonce
+    
+    Client->>Client: Sign challenge with state wallet
+    Client->>CN: Send auth_verify with signature
+    
+    CN->>CN: Verify signature against address
+    
+    alt Authentication Success
+        CN->>Client: Send auth_success
+        Note over Client,CN: Client is now authenticated
+        Client->>CN: Can now send channel operations
+    else Authentication Failure
+        CN->>Client: Send auth_failure
+        Note over Client,CN: Connection remains but unauthorized
+    end
+```
+
 <Tabs>
   <TabItem value="auth" label="Authentication Process">
 
@@ -1640,5 +1670,3 @@ After successfully connecting to a ClearNode, you can:
 
 1. [View and manage channel assets](balances)
 2. [Create an application session](application_session)
-3. [Start transacting off-chain](application_session#sending-transactions)
-4. [Explore advanced channel operations](resize_channel)
