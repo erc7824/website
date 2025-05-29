@@ -282,9 +282,12 @@ const eip712MessageSigner = async (payload) => {
     const walletAddress = walletClient.account.address;
 
     const message = {
-      address: walletAddress,
-      challenge,
-      session_key: walletAddress,
+      challenge: challenge,
+      scope: 'console',
+      wallet: '0xYourWalletAddress',
+      application: '0xYourApplicationAddress', // Your application address
+      participant: '0xYourSignerAddress', // The address of the signer
+      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
       allowances: [],
     };
 
@@ -294,7 +297,7 @@ const eip712MessageSigner = async (payload) => {
         name: 'Your Domain',
       },
       types: AUTH_TYPES,
-      primaryType: 'AuthVerify',
+      primaryType: 'Policy',
       message: message,
     });
     
@@ -311,9 +314,12 @@ ws.onopen = async () => {
   
   // Step 1: Create and send auth_request
   const authRequestMsg = await createAuthRequestMessage({
-    address: walletAddress,
-    session_key: walletAddress,
+    wallet: '0xYourWalletAddress',
+    participant: '0xYourSignerAddress',
     app_name: 'Your Domain',
+    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+    scope: 'console',
+    application: '0xYourApplicationAddress',
     allowances: [],
   });
   
@@ -376,9 +382,12 @@ const eip712MessageSigner = async (payload) => {
     const walletAddress = walletClient.account.address;
 
     const message = {
-      address: walletAddress,
-      challenge,
-      session_key: walletAddress,
+      challenge: challenge,
+      scope: 'console',
+      wallet: '0xYourWalletAddress',
+      application: '0xYourApplicationAddress', // Your application address
+      participant: '0xYourSignerAddress', // The address of the signer
+      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
       allowances: [],
     };
 
@@ -388,7 +397,7 @@ const eip712MessageSigner = async (payload) => {
         name: 'Your Domain',
       },
       types: AUTH_TYPES,
-      primaryType: 'AuthVerify',
+      primaryType: 'Policy',
       message: message,
     });
     
@@ -402,9 +411,12 @@ const eip712MessageSigner = async (payload) => {
 // After connection is established, send auth request
 ws.onopen = async () => {
   const authRequestMsg = await createAuthRequestMessage({
-    address: walletAddress,
-    session_key: walletAddress,
+    wallet: '0xYourWalletAddress',
+    participant: '0xYourSignerAddress',
     app_name: 'Your Domain',
+    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+    scope: 'console',
+    application: '0xYourApplicationAddress',
     allowances: [],
   });
   ws.send(authRequestMsg);
@@ -496,29 +508,35 @@ The format of the EIP-712 message is as follows:
 {
   "types": {
     "EIP712Domain": [
-      { "name": "name", "type": "string" },
+      { "name": "name", "type": "string" }
     ],
-    "AuthVerify": [
-      { "name": "address", "type": "address" },
+    "Policy": [
       { "name": "challenge", "type": "string" },
-      { "name": "session_key", "type": "address" },
+      { "name": "scope", "type": "string" },
+      { "name": "wallet", "type": "address" },
+      { "name": "application", "type": "address" },
+      { "name": "participant", "type": "address" },
+      { "name": "expire", "type": "uint256" },
       { "name": "allowances", "type": "Allowances[]" }
     ],
     "Allowance": [
       { "name": "asset", "type": "string" },
       { "name": "amount", "type": "uint256" }
-    ],
+    ]
   },
   // Domain and primary type
   domain: {
-    name: 'Your Domain',
+    name: 'Your Domain'
   },
-  primaryType: 'AuthVerify',
+  primaryType: 'Policy',
   message: {
-    address: '0xYourAddress',
     challenge: 'RandomChallengeString',
-    session_key: '0xYourSessionKey',
-    allowances: [] // Add allowances if needed
+    scope: 'console',
+    wallet: '0xYourWalletAddress',
+    application: '0xYourApplicationAddress',
+    participant: '0xYourSignerAddress',
+    expire: 100500,
+    allowances: []
   }
 }
 ```
