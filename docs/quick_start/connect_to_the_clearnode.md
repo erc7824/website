@@ -228,10 +228,11 @@ clearNodeConnection.disconnect();
 When connecting to a ClearNode, you need to follow a specific authentication flow using the NitroliteRPC utility to create properly formatted and signed messages:
 
 1. **Initial Connection**: The client establishes a WebSocket connection to the ClearNode's URL
-2. **Auth Request**: The client sends an `auth_request` message with its identity information
+2. **Auth Request**: On the first connection client sends an `auth_request` message with its identity information
 3. **Challenge**: The ClearNode responds with an `auth_challenge` containing a random nonce
-4. **Signature Verification**: The client signs the challenge using its state wallet and sends an `auth_verify` message
+4. **Signature Verification**: The client signs the challenge along with session key and allowances using EIP712 signature and sends an `auth_verify` message
 5. **Auth Result**: The ClearNode verifies the signature and responds with `auth_success` or `auth_failure`
+6. **Reconnection**: On success ClearNode will return the JWT Token, which can be used for subsequent reconnections without needing to re-authenticate.
 
 This flow ensures that only authorized participants with valid signing keys can connect to the ClearNode and participate in channel operations.
 
@@ -243,14 +244,13 @@ sequenceDiagram
     Client->>CN: WebSocket Connection Request
     CN->>Client: Connection Established
     
-    Client->>Client: Create auth_request with address
-    Client->>Client: Sign message with state wallet
+    Client->>Client: Create auth_request
     Client->>CN: Send auth_request
     
     CN->>CN: Generate random challenge nonce
     CN->>Client: Send auth_challenge with nonce
     
-    Client->>Client: Sign challenge with state wallet
+    Client->>Client: Sign challenge using EIP712
     Client->>CN: Send auth_verify with signature
     
     CN->>CN: Verify signature against address
@@ -272,22 +272,34 @@ sequenceDiagram
 import { createAuthRequestMessage, createAuthVerifyMessage } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
-// Important: Custom message signer that correctly hashes the message with ethers.id
 // This is crucial for proper ClearNode communication
-const messageSigner = async (payload) => {
+const eip712MessageSigner = async (payload) => {
   try {
-    // Convert the payload to a JSON string
-    const message = JSON.stringify(payload);
-    
-    // Hash the message with ethers.id (keccak256 hash)
-    const digestHex = ethers.id(message);
-    
-    // Convert the hash to bytes
-    const messageBytes = ethers.getBytes(digestHex);
-    
-    // Sign the bytes with the wallet's signing key
-    // Note: This uses the raw signing method, not the EIP-191 prefixed signing!
-    const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
+    // Extract the challenge message from the data
+    const parsed = JSON.parse(data);
+    const challenge = parsed.challenge_message;
+
+    const walletAddress = walletClient.account.address;
+
+    const message = {
+      challenge: challenge,
+      scope: 'console',
+      wallet: '0xYourWalletAddress',
+      application: '0xYourApplicationAddress', // Your application address
+      participant: '0xYourSignerAddress', // The address of the signer
+      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+      allowances: [],
+    };
+
+    const signature = await walletClient.signTypedData({
+      account: walletClient.account!,
+      domain: {
+        name: 'Your Domain',
+      },
+      types: AUTH_TYPES,
+      primaryType: 'Policy',
+      message: message,
+    });
     
     return signature;
   } catch (error) {
@@ -301,10 +313,15 @@ ws.onopen = async () => {
   console.log('WebSocket connection established');
   
   // Step 1: Create and send auth_request
-  const authRequestMsg = await createAuthRequestMessage(
-    messageSigner, // Our custom message signer function
-    client.stateWalletClient.account.address // Client address
-  );
+  const authRequestMsg = await createAuthRequestMessage({
+    wallet: '0xYourWalletAddress',
+    participant: '0xYourSignerAddress',
+    app_name: 'Your Domain',
+    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+    scope: 'console',
+    application: '0xYourApplicationAddress',
+    allowances: [],
+  });
   
   ws.send(authRequestMsg);
 };
@@ -320,9 +337,9 @@ ws.onmessage = async (event) => {
       
       // Step 3: Create and send auth_verify with signed challenge
       const authVerifyMsg = await createAuthVerifyMessage(
-        messageSigner, // Our custom message signer function
-        message, // Raw challenge response from ClearNode
-        client.stateWalletClient.account.address // Client address (same as in auth_request)
+        eip712MessageSigner, // Our custom eip712 signer function
+        event.data, // Raw challenge response from ClearNode
+        walletAddress // Client address (same as in auth_request)
       );
       
       ws.send(authVerifyMsg);
@@ -331,6 +348,8 @@ ws.onmessage = async (event) => {
     else if (message.res && message.res[1] === 'auth_success') {
       console.log('Authentication successful');
       // Now you can start using the channel
+
+      window.localStorage.setItem('clearnode_jwt', message.res[2][0]["jwt_token"]); // Store JWT token for future use
     }
     else if (message.res && message.res[1] === 'auth_failure') {
       console.error('Authentication failed:', message.res[2]);
@@ -353,20 +372,34 @@ import {
 } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
-// Create the proper message signer function
-const messageSigner = async (payload) => {
+// This is crucial for proper ClearNode communication
+const eip712MessageSigner = async (payload) => {
   try {
-    // Convert the payload to a JSON string
-    const message = JSON.stringify(payload);
-    
-    // Hash the message with ethers.id (keccak256 hash)
-    const digestHex = ethers.id(message);
-    
-    // Convert the hash to bytes
-    const messageBytes = ethers.getBytes(digestHex);
-    
-    // Sign the bytes with the wallet's signing key
-    const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
+    // Extract the challenge message from the data
+    const parsed = JSON.parse(data);
+    const challenge = parsed.challenge_message;
+
+    const walletAddress = walletClient.account.address;
+
+    const message = {
+      challenge: challenge,
+      scope: 'console',
+      wallet: '0xYourWalletAddress',
+      application: '0xYourApplicationAddress', // Your application address
+      participant: '0xYourSignerAddress', // The address of the signer
+      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+      allowances: [],
+    };
+
+    const signature = await walletClient.signTypedData({
+      account: walletClient.account!,
+      domain: {
+        name: 'Your Domain',
+      },
+      types: AUTH_TYPES,
+      primaryType: 'Policy',
+      message: message,
+    });
     
     return signature;
   } catch (error) {
@@ -377,10 +410,15 @@ const messageSigner = async (payload) => {
 
 // After connection is established, send auth request
 ws.onopen = async () => {
-  const authRequestMsg = await createAuthRequestMessage(
-    messageSigner,
-    client.stateWalletClient.account.address
-  );
+  const authRequestMsg = await createAuthRequestMessage({
+    wallet: '0xYourWalletAddress',
+    participant: '0xYourSignerAddress',
+    app_name: 'Your Domain',
+    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+    scope: 'console',
+    application: '0xYourApplicationAddress',
+    allowances: [],
+  });
   ws.send(authRequestMsg);
 };
 
@@ -401,8 +439,7 @@ ws.onmessage = async (event) => {
         
         // Create auth_verify with the explicitly provided challenge
         const authVerifyMsg = await createAuthVerifyMessageFromChallenge(
-          messageSigner,
-          client.stateWalletClient.account.address,
+          eip712MessageSigner,
           challenge
         );
         
@@ -418,7 +455,91 @@ ws.onmessage = async (event) => {
 ```
 
   </TabItem>
+  <TabItem value="reconnect" label="Reconnect">
+
+```javascript
+import { createAuthVerifyMessageWithJWT } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+
+// After WebSocket connection is established
+ws.onopen = async () => {
+  console.log('WebSocket connection established');
+  
+  // Step 1: Create and send auth_verify with JWT for reconnection
+  // Get the stored JWT token
+  const jwtToken = window.localStorage.getItem('clearnode_jwt');
+
+  const authRequestMsg = await createAuthVerifyMessageWithJWT(
+    jwtToken, // JWT token for reconnection
+  );
+  
+  ws.send(authRequestMsg);
+};
+
+// Handle incoming messages
+ws.onmessage = async (event) => {
+  try {
+    const message = JSON.parse(event.data);
+    
+    // Step 2: Handle auth_success or auth_failure
+    if (message.res && message.res[1] === 'auth_success') {
+      console.log('Authentication successful');
+      // Now you can start using the channel
+    }
+    else if (message.res && message.res[1] === 'auth_failure') {
+      console.error('Authentication failed:', message.res[2]);
+    }
+  } catch (error) {
+    console.error('Error handling message:', error);
+  }
+};
+```
+
+  </TabItem>
 </Tabs>
+
+### EIP-712 Signature
+
+In the authentication process, the client must sign messages using EIP-712 structured data signatures. This ensures that the messages are tamper-proof and verifiable by the ClearNode.
+
+The format of the EIP-712 message is as follows:
+
+```javascript
+{
+  "types": {
+    "EIP712Domain": [
+      { "name": "name", "type": "string" }
+    ],
+    "Policy": [
+      { "name": "challenge", "type": "string" },
+      { "name": "scope", "type": "string" },
+      { "name": "wallet", "type": "address" },
+      { "name": "application", "type": "address" },
+      { "name": "participant", "type": "address" },
+      { "name": "expire", "type": "uint256" },
+      { "name": "allowances", "type": "Allowances[]" }
+    ],
+    "Allowance": [
+      { "name": "asset", "type": "string" },
+      { "name": "amount", "type": "uint256" }
+    ]
+  },
+  // Domain and primary type
+  domain: {
+    name: 'Your Domain'
+  },
+  primaryType: 'Policy',
+  message: {
+    challenge: 'RandomChallengeString',
+    scope: 'console',
+    wallet: '0xYourWalletAddress',
+    application: '0xYourApplicationAddress',
+    participant: '0xYourSignerAddress',
+    expire: 100500,
+    allowances: []
+  }
+}
+```
 
 ## Getting Channel Information
 
@@ -1656,13 +1777,13 @@ When working with ClearNodes and state channels, keep these security best practi
 
 ## Troubleshooting Common Issues
 
-| Issue | Possible Causes | Solution |
-|-------|----------------|----------|
-| Connection timeout | Network latency, ClearNode unavailable | Implement retry logic with exponential backoff |
-| Authentication failure | Invalid state wallet, incorrect signing | Verify your state wallet is properly initialized and signing correctly |
-| Frequent disconnections | Unstable network, server-side issues | Monitor connection events and implement automatic reconnection |
-| Message delivery failures | Connection issues, invalid message format | Add message queuing and confirmation mechanism |
-| Invalid signature errors | EIP-191 prefix issues | Ensure you're signing raw message bytes without the EIP-191 prefix |
+| Issue                     | Possible Causes                           | Solution                                                               |
+| ------------------------- | ----------------------------------------- | ---------------------------------------------------------------------- |
+| Connection timeout        | Network latency, ClearNode unavailable    | Implement retry logic with exponential backoff                         |
+| Authentication failure    | Invalid state wallet, incorrect signing   | Verify your state wallet is properly initialized and signing correctly |
+| Frequent disconnections   | Unstable network, server-side issues      | Monitor connection events and implement automatic reconnection         |
+| Message delivery failures | Connection issues, invalid message format | Add message queuing and confirmation mechanism                         |
+| Invalid signature errors  | EIP-191 prefix issues                     | Ensure you're signing raw message bytes without the EIP-191 prefix     |
 
 ## Next Steps
 
