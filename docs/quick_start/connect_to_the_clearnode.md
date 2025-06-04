@@ -269,50 +269,19 @@ sequenceDiagram
   <TabItem value="auth" label="Authentication Process">
 
 ```javascript
-import { createAuthRequestMessage, createAuthVerifyMessage } from '@erc7824/nitrolite';
+import {
+  createAuthRequestMessage, 
+  createAuthVerifyMessage, 
+  createEIP712AuthMessageSigner, 
+  parseRPCResponse,
+} from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
-
-// This is crucial for proper ClearNode communication
-const eip712MessageSigner = async (payload) => {
-  try {
-    // Extract the challenge message from the data
-    const parsed = JSON.parse(data);
-    const challenge = parsed.challenge_message;
-
-    const walletAddress = walletClient.account.address;
-
-    const message = {
-      challenge: challenge,
-      scope: 'console',
-      wallet: '0xYourWalletAddress',
-      application: '0xYourApplicationAddress', // Your application address
-      participant: '0xYourSignerAddress', // The address of the signer
-      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-      allowances: [],
-    };
-
-    const signature = await walletClient.signTypedData({
-      account: walletClient.account!,
-      domain: {
-        name: 'Your Domain',
-      },
-      types: AUTH_TYPES,
-      primaryType: 'Policy',
-      message: message,
-    });
-    
-    return signature;
-  } catch (error) {
-    console.error("Error signing message:", error);
-    throw error;
-  }
-};
 
 // After WebSocket connection is established
 ws.onopen = async () => {
   console.log('WebSocket connection established');
   
-  // Step 1: Create and send auth_request
+  // Create and send auth_request
   const authRequestMsg = await createAuthRequestMessage({
     wallet: '0xYourWalletAddress',
     participant: '0xYourSignerAddress',
@@ -329,13 +298,30 @@ ws.onopen = async () => {
 // Handle incoming messages
 ws.onmessage = async (event) => {
   try {
-    const message = JSON.parse(event.data);
+    const message = parseRPCResponse(event.data);
     
-    // Step 2: Handle auth_challenge response
-    if (message.res && message.res[1] === 'auth_challenge') {
+    // Handle auth_challenge response
+    if (message.method === 'auth_challenge') {
       console.log('Received auth challenge');
+
+      // Create EIP-712 message signer function
+      const eip712MessageSigner = createEIP712AuthMessageSigner(
+        walletClient, // Your wallet client instance
+        {  
+          // EIP-712 message structure, data should match auth_request
+          scope: authRequestMsg.scope,
+          application: authRequestMsg.application,
+          participant: authRequestMsg.participant,
+          expire: authRequestMsg.expire,
+          allowances: authRequestMsg.allowances,
+        },
+        { 
+          // Domain for EIP-712 signing
+          name: 'Your Domain',
+        },
+      )
       
-      // Step 3: Create and send auth_verify with signed challenge
+      // Create and send auth_verify with signed challenge
       const authVerifyMsg = await createAuthVerifyMessage(
         eip712MessageSigner, // Our custom eip712 signer function
         event.data, // Raw challenge response from ClearNode
@@ -344,15 +330,15 @@ ws.onmessage = async (event) => {
       
       ws.send(authVerifyMsg);
     }
-    // Step 4: Handle auth_success or auth_failure
-    else if (message.res && message.res[1] === 'auth_success') {
+    // Handle auth_success or auth_failure
+    else if (message.method === 'auth_verify' && message.params.success) {
       console.log('Authentication successful');
       // Now you can start using the channel
 
-      window.localStorage.setItem('clearnode_jwt', message.res[2][0]["jwt_token"]); // Store JWT token for future use
+      window.localStorage.setItem('clearnode_jwt', message.params.jwtToken); // Store JWT token for future use
     }
-    else if (message.res && message.res[1] === 'auth_failure') {
-      console.error('Authentication failed:', message.res[2]);
+    else if (message.method === 'error') {
+      console.error('Authentication failed:', message.params.error);
     }
   } catch (error) {
     console.error('Error handling message:', error);
@@ -368,45 +354,11 @@ import {
   createAuthRequestMessage, 
   createAuthVerifyMessageFromChallenge,
   createGetLedgerBalancesMessage,
-  createGetConfigMessage 
+  createGetConfigMessage,
+  createEIP712AuthMessageSigner, 
+  parseRPCResponse,
 } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
-
-// This is crucial for proper ClearNode communication
-const eip712MessageSigner = async (payload) => {
-  try {
-    // Extract the challenge message from the data
-    const parsed = JSON.parse(data);
-    const challenge = parsed.challenge_message;
-
-    const walletAddress = walletClient.account.address;
-
-    const message = {
-      challenge: challenge,
-      scope: 'console',
-      wallet: '0xYourWalletAddress',
-      application: '0xYourApplicationAddress', // Your application address
-      participant: '0xYourSignerAddress', // The address of the signer
-      expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-      allowances: [],
-    };
-
-    const signature = await walletClient.signTypedData({
-      account: walletClient.account!,
-      domain: {
-        name: 'Your Domain',
-      },
-      types: AUTH_TYPES,
-      primaryType: 'Policy',
-      message: message,
-    });
-    
-    return signature;
-  } catch (error) {
-    console.error("Error signing message:", error);
-    throw error;
-  }
-};
 
 // After connection is established, send auth request
 ws.onopen = async () => {
@@ -425,17 +377,31 @@ ws.onopen = async () => {
 // If you want to manually extract and handle the challenge
 ws.onmessage = async (event) => {
   try {
-    const message = JSON.parse(event.data);
+    const message = parseRPCResponse(event.data);
     
-    if (message.res && message.res[1] === 'auth_challenge') {
+    if (message.method === 'auth_challenge') {
       // Extract the challenge manually from the response
       if (
-        message.res[2] && 
-        Array.isArray(message.res[2]) && 
-        message.res[2][0] && 
-        message.res[2][0].challenge_message
+        message.params.challengeMessage
       ) {
-        const challenge = message.res[2][0].challenge_message;
+        const challenge = message.params.challengeMessage;
+
+        // Create EIP-712 message signer function
+        const eip712MessageSigner = createEIP712AuthMessageSigner(
+          walletClient, // Your wallet client instance
+          {  
+            // EIP-712 message structure, data should match auth_request
+            scope: authRequestMsg.scope,
+            application: authRequestMsg.application,
+            participant: authRequestMsg.participant,
+            expire: authRequestMsg.expire,
+            allowances: authRequestMsg.allowances,
+          },
+          { 
+            // Domain for EIP-712 signing
+            name: 'Your Domain',
+          },
+        )
         
         // Create auth_verify with the explicitly provided challenge
         const authVerifyMsg = await createAuthVerifyMessageFromChallenge(
@@ -458,14 +424,14 @@ ws.onmessage = async (event) => {
   <TabItem value="reconnect" label="Reconnect">
 
 ```javascript
-import { createAuthVerifyMessageWithJWT } from '@erc7824/nitrolite';
+import { createAuthVerifyMessageWithJWT, parseRPCResponse } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
 // After WebSocket connection is established
 ws.onopen = async () => {
   console.log('WebSocket connection established');
   
-  // Step 1: Create and send auth_verify with JWT for reconnection
+  // Create and send auth_verify with JWT for reconnection
   // Get the stored JWT token
   const jwtToken = window.localStorage.getItem('clearnode_jwt');
 
@@ -479,15 +445,15 @@ ws.onopen = async () => {
 // Handle incoming messages
 ws.onmessage = async (event) => {
   try {
-    const message = JSON.parse(event.data);
+    const message = parseRPCResponse(event.data);
     
-    // Step 2: Handle auth_success or auth_failure
-    if (message.res && message.res[1] === 'auth_success') {
+    // Handle auth_success or auth_failure
+    if (message.method === 'auth_verify' && message.params.success) {
       console.log('Authentication successful');
       // Now you can start using the channel
     }
-    else if (message.res && message.res[1] === 'auth_failure') {
-      console.error('Authentication failed:', message.res[2]);
+    else if (message.method === 'error') {
+      console.error('Authentication failed:', message.params.error);
     }
   } catch (error) {
     console.error('Error handling message:', error);
@@ -546,14 +512,14 @@ The format of the EIP-712 message is as follows:
 After authenticating with a ClearNode, you can request information about your channels. This is useful to verify your connection is working correctly and to retrieve channel data.
 
 ```javascript
-import { createGetChannelsMessage } from '@erc7824/nitrolite';
+import { createGetChannelsMessage, parseRPCResponse } from '@erc7824/nitrolite';
 
 // Example of using the function after authentication is complete
 ws.addEventListener('message', async (event) => {
-  const message = JSON.parse(event.data);
+  const message = parseRPCResponse(event.data);
   
   // Check if this is a successful authentication message
-  if (message.res && message.res[1] === 'auth_success') {
+  if (message.method === 'auth_verify' && message.params.success) {
     console.log('Successfully authenticated, requesting channel information...');
     
     // Create a custom message signer function if you don't already have one
