@@ -38,17 +38,18 @@ To create an application session, you'll use the `createAppSessionMessage` helpe
   <TabItem value="react" label="React">
 
 ```javascript
-import { createAppSessionMessage } from '@erc7824/nitrolite';
+import { createAppSessionMessage, parseRPCResponse, MessageSigner, CreateAppSessionRPCParams } from '@erc7824/nitrolite';
 import { useCallback } from 'react';
+import { Address } from 'viem';
 
 function useCreateApplicationSession() {
   const createApplicationSession = useCallback(
     async (
-      signer,
-      sendRequest,
-      participantA,
-      participantB,
-      amount,
+      signer: MessageSigner,
+      sendRequest: (message: string) => Promise<CreateAppSessionRPCParams>,
+      participantA: Address,
+      participantB: Address,
+      amount: string,
     ) => {
       try {
         // Define the application parameters
@@ -77,7 +78,7 @@ function useCreateApplicationSession() {
 
         // Create a signed message using the createAppSessionMessage helper
         const signedMessage = await createAppSessionMessage(
-          signer.sign,
+          signer,
           [
             {
               definition: appDefinition,
@@ -90,10 +91,10 @@ function useCreateApplicationSession() {
         const response = await sendRequest(signedMessage);
 
         // Handle the response
-        if (response && response[0] && response[0].app_session_id) {
+        if (response.app_session_id) {
           // Store the app session ID for future reference
-          localStorage.setItem('app_session_id', response[0].app_session_id);
-          return { success: true, app_session_id: response[0].app_session_id, response };
+          localStorage.setItem('app_session_id', response.app_session_id);
+          return { success: true, app_session_id: response.app_session_id, response };
         } else {
           return { success: true, response };
         }
@@ -119,15 +120,15 @@ function MyComponent() {
   
   const handleCreateSession = async () => {
     // Define your WebSocket send wrapper
-    const sendRequest = async (payload) => {
+    const sendRequest = async (payload: string) => {
       return new Promise((resolve, reject) => {
         // Assuming ws is your WebSocket connection
         const handleMessage = (event) => {
           try {
-            const message = JSON.parse(event.data);
-            if (message.res && message.res[1] === 'create_app_session') {
+            const message = parseRPCResponse(event.data);
+            if (message.method === RPCMethod.CreateAppSession) {
               ws.removeEventListener('message', handleMessage);
-              resolve(message.res[2]);
+              resolve(message.params);
             }
           } catch (error) {
             console.error('Error parsing message:', error);

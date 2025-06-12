@@ -39,7 +39,7 @@ To close an application session, you'll use the `createCloseAppSessionMessage` h
 
 ```javascript
 import { useCallback } from 'react';
-import { createCloseAppSessionMessage } from '@erc7824/nitrolite';
+import { createCloseAppSessionMessage, parseRPCResponse, MessageSigner, CloseAppSessionRPCParams } from '@erc7824/nitrolite';
 
 /**
  * Hook for closing an application session
@@ -47,12 +47,12 @@ import { createCloseAppSessionMessage } from '@erc7824/nitrolite';
 function useCloseApplicationSession() {
   const closeApplicationSession = useCallback(
     async (
-      signer,
-      sendRequest,
-      appId,
-      participantA,
-      participantB,
-      amount
+      signer: MessageSigner,
+      sendRequest: (message: string) => Promise<CloseAppSessionRPCParams>,
+      appId: string,
+      participantA: Address,
+      participantB: Address,
+      amount: string
     ) => {
       try {
         if (!appId) {
@@ -81,7 +81,7 @@ function useCloseApplicationSession() {
         
         // Create the signed message
         const signedMessage = await createCloseAppSessionMessage(
-          signer.sign, 
+          signer, 
           [closeRequest]
         );
         
@@ -89,13 +89,13 @@ function useCloseApplicationSession() {
         const response = await sendRequest(signedMessage);
         
         // Check for success
-        if (response && response[0] && response[0].app_session_id) {
+        if (response.app_session_id) {
           // Clean up local storage
           localStorage.removeItem('app_session_id');
           return { 
             success: true, 
-            app_id: response[0].app_session_id,
-            status: response[0].status || "closed", 
+            app_id: response.app_session_id,
+            status: response.status || "closed", 
             response 
           };
         } else {
@@ -128,10 +128,10 @@ function MyComponent() {
         // Assuming ws is your WebSocket connection
         const handleMessage = (event) => {
           try {
-            const message = JSON.parse(event.data);
-            if (message.res && message.res[1] === 'close_app_session') {
+            const message = parseRPCResponse(event.data);
+            if (message.method === RPCMethod.CloseAppSession) {
               ws.removeEventListener('message', handleMessage);
-              resolve(message.res[2]);
+              resolve(message.params);
             }
           } catch (error) {
             console.error('Error parsing message:', error);

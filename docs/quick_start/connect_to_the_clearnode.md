@@ -274,23 +274,24 @@ import {
   createAuthVerifyMessage, 
   createEIP712AuthMessageSigner, 
   parseRPCResponse,
+  RPCMethod,
 } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
+
+// Create and send auth_request
+const authRequestMsg = await createAuthRequestMessage({
+  wallet: '0xYourWalletAddress',
+  participant: '0xYourSignerAddress',
+  app_name: 'Your Domain',
+  expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
+  scope: 'console',
+  application: '0xYourApplicationAddress',
+  allowances: [],
+});
 
 // After WebSocket connection is established
 ws.onopen = async () => {
   console.log('WebSocket connection established');
-  
-  // Create and send auth_request
-  const authRequestMsg = await createAuthRequestMessage({
-    wallet: '0xYourWalletAddress',
-    participant: '0xYourSignerAddress',
-    app_name: 'Your Domain',
-    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-    scope: 'console',
-    application: '0xYourApplicationAddress',
-    allowances: [],
-  });
   
   ws.send(authRequestMsg);
 };
@@ -301,44 +302,49 @@ ws.onmessage = async (event) => {
     const message = parseRPCResponse(event.data);
     
     // Handle auth_challenge response
-    if (message.method === 'auth_challenge') {
-      console.log('Received auth challenge');
+    switch (message.method) {
+      case RPCMethod.AuthChallenge:
+        console.log('Received auth challenge');
 
-      // Create EIP-712 message signer function
-      const eip712MessageSigner = createEIP712AuthMessageSigner(
-        walletClient, // Your wallet client instance
-        {  
-          // EIP-712 message structure, data should match auth_request
-          scope: authRequestMsg.scope,
-          application: authRequestMsg.application,
-          participant: authRequestMsg.participant,
-          expire: authRequestMsg.expire,
-          allowances: authRequestMsg.allowances,
-        },
-        { 
-          // Domain for EIP-712 signing
-          name: 'Your Domain',
-        },
-      )
-      
-      // Create and send auth_verify with signed challenge
-      const authVerifyMsg = await createAuthVerifyMessage(
-        eip712MessageSigner, // Our custom eip712 signer function
-        event.data, // Raw challenge response from ClearNode
-        walletAddress // Client address (same as in auth_request)
-      );
-      
-      ws.send(authVerifyMsg);
-    }
-    // Handle auth_success or auth_failure
-    else if (message.method === 'auth_verify' && message.params.success) {
-      console.log('Authentication successful');
-      // Now you can start using the channel
+        // Create EIP-712 message signer function
+        const eip712MessageSigner = createEIP712AuthMessageSigner(
+          walletClient, // Your wallet client instance
+          {  
+            // EIP-712 message structure, data should match auth_request
+            scope: authRequestMsg.scope,
+            application: authRequestMsg.application,
+            participant: authRequestMsg.participant,
+            expire: authRequestMsg.expire,
+            allowances: authRequestMsg.allowances,
+          },
+          { 
+            // Domain for EIP-712 signing
+            name: 'Your Domain',
+          },
+        )
+        
+        // Create and send auth_verify with signed challenge
+        const authVerifyMsg = await createAuthVerifyMessage(
+          eip712MessageSigner, // Our custom eip712 signer function
+          message,
+        );
+        
+        ws.send(authVerifyMsg);
+        break;
+      // Handle auth_success or auth_failure
+      case RPCMethod.AuthVerify:
+        if (!message.params.success) {
+          console.log('Authentication failed');
+          return;
+        }
+        console.log('Authentication successful');
+        // Now you can start using the channel
 
-      window.localStorage.setItem('clearnode_jwt', message.params.jwtToken); // Store JWT token for future use
-    }
-    else if (message.method === 'error') {
-      console.error('Authentication failed:', message.params.error);
+        window.localStorage.setItem('clearnode_jwt', message.params.jwtToken); // Store JWT token for future use
+        break;
+      case RPCMethod.Error: {
+        console.error('Authentication failed:', message.params.error);
+      }
     }
   } catch (error) {
     console.error('Error handling message:', error);
@@ -357,6 +363,7 @@ import {
   createGetConfigMessage,
   createEIP712AuthMessageSigner, 
   parseRPCResponse,
+  RPCMethod,
 } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
@@ -379,7 +386,7 @@ ws.onmessage = async (event) => {
   try {
     const message = parseRPCResponse(event.data);
     
-    if (message.method === 'auth_challenge') {
+    if (message.method === RPCMethod.AuthChallenge) {
       // Extract the challenge manually from the response
       if (
         message.params.challengeMessage
@@ -424,7 +431,7 @@ ws.onmessage = async (event) => {
   <TabItem value="reconnect" label="Reconnect">
 
 ```javascript
-import { createAuthVerifyMessageWithJWT, parseRPCResponse } from '@erc7824/nitrolite';
+import { createAuthVerifyMessageWithJWT, parseRPCResponse, RPCMethod } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
 // After WebSocket connection is established
@@ -447,13 +454,17 @@ ws.onmessage = async (event) => {
   try {
     const message = parseRPCResponse(event.data);
     
-    // Handle auth_success or auth_failure
-    if (message.method === 'auth_verify' && message.params.success) {
-      console.log('Authentication successful');
-      // Now you can start using the channel
-    }
-    else if (message.method === 'error') {
-      console.error('Authentication failed:', message.params.error);
+      // Handle auth_success or auth_failure
+    switch (message.method) {
+      case RPCMethod.AuthVerify:
+        if (message.params.success) {
+          console.log('Authentication successful');
+          // Now you can start using the channel
+        }
+        break;
+      case RPCMethod.Error:
+        console.error('Authentication failed:', message.params.error);
+        break;
     }
   } catch (error) {
     console.error('Error handling message:', error);
@@ -507,34 +518,59 @@ The format of the EIP-712 message is as follows:
 }
 ```
 
-## Getting Channel Information
+### Message Signer
 
+In methods that require signing messages, that are not part of the authentication flow, you should use a custom message signer function `MessageSigner`. This function takes the payload and returns a signed message that can be sent to the ClearNode using ECDSA signature.
+
+There are also, several things to consider: this method SHOULD sign plain JSON payloads and NOT [ERC-191](https://eips.ethereum.org/EIPS/eip-191) data, because it allows signatures to be compatible with non-EVM chains. Since most of the libraries, like `ethers` or `viem`, use EIP-191 by default, you will need to overwrite the default behavior to sign plain JSON payloads.
+The other thing to consider is that providing an EOA private key directly in the code is not recommended for production applications. Instead, we are recommending to generate session keys -- temporary keys that are used for signing messages during the session. This way, you can avoid exposing your main wallet's private key and reduce the risk of compromising your funds.
+
+The simpliest implementation of a message signer function looks like this:
+
+> **Warning**
+> For this example use `ethers` library version `5.7.2`. The `ethers` library version `6.x` has breaking changes that are not allowed in this example.
+
+```javascript
+import { MessageSigner, RequestData, ResponsePayload } from '@erc7824/nitrolite';
+import { ethers } from 'ethers';
+import { Hex } from 'viem';
+
+const messageSigner = async (payload: RequestData | ResponsePayload): Promise<Hex> => {
+    try {
+        const wallet = new ethers.Wallet('0xYourPrivateKey');
+
+        const messageBytes = ethers.utils.arrayify(ethers.utils.id(JSON.stringify(payload)));
+
+        const flatSignature = await wallet._signingKey().signDigest(messageBytes);
+
+        const signature = ethers.utils.joinSignature(flatSignature);
+
+        return signature as Hex;
+    } catch (error) {
+        console.error('Error signing message:', error);
+        throw error;
+    }
+}
+```
+
+## Getting Channel Information
+Так
 After authenticating with a ClearNode, you can request information about your channels. This is useful to verify your connection is working correctly and to retrieve channel data.
 
 ```javascript
-import { createGetChannelsMessage, parseRPCResponse } from '@erc7824/nitrolite';
+import { createGetChannelsMessage, parseRPCResponse, RPCMethod } from '@erc7824/nitrolite';
 
 // Example of using the function after authentication is complete
 ws.addEventListener('message', async (event) => {
   const message = parseRPCResponse(event.data);
   
   // Check if this is a successful authentication message
-  if (message.method === 'auth_verify' && message.params.success) {
+  if (message.method === RPCMethod.AuthVerify && message.params.success) {
     console.log('Successfully authenticated, requesting channel information...');
-    
-    // Create a custom message signer function if you don't already have one
-    const messageSigner = async (payload) => {
-      // This is the same message signer function used in authentication
-      const message = JSON.stringify(payload);
-      const digestHex = ethers.id(message);
-      const messageBytes = ethers.getBytes(digestHex);
-      const { serialized: signature } = client.stateWalletClient.wallet.signingKey.sign(messageBytes);
-      return signature;
-    };
     
     // Request channel information using the built-in helper function
     const getChannelsMsg = await createGetChannelsMessage(
-      messageSigner,
+      messageSigner, // Provide message signer function from previous example
       client.stateWalletClient.account.address
     );
     
@@ -542,9 +578,9 @@ ws.addEventListener('message', async (event) => {
   }
   
   // Handle get_channels response
-  if (message.res && message.res[1] === 'get_channels') {
+  if (message.method === RPCMethod.GetChannels) {
     console.log('Received channels information:');
-    const channelsList = message.res[2][0]; // Note the response format has changed
+    const channelsList = message.params;
     
     if (channelsList && channelsList.length > 0) {
       channelsList.forEach((channel, index) => {
