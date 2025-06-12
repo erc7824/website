@@ -57,7 +57,7 @@ To retrieve these balances, use the `get_ledger_balances` request with the Clear
   <TabItem value="using-helper" label="Using SDK Helper">
 
 ```javascript
-import { createGetLedgerBalancesMessage } from '@erc7824/nitrolite';
+import { createGetLedgerBalancesMessage, parseRPCMessage, RPCMethod } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
 // Your message signer function (same as in auth flow)
@@ -74,15 +74,15 @@ async function getLedgerBalances(ws, participant) {
   return new Promise((resolve, reject) => {
     // Create a unique handler for this specific request
     const handleMessage = (event) => {
-      const message = JSON.parse(event.data);
+      const message = parseRPCMessage(event.data);
       
       // Check if this is a response to our get_ledger_balances request
-      if (message.res && message.res[1] === 'get_ledger_balances') {
+      if (message.method === RPCMethod.GetLedgerBalances) {
         // Remove the message handler to avoid memory leaks
         ws.removeEventListener('message', handleMessage);
         
         // Resolve with the balances data
-        resolve(message.res[2]);
+        resolve(message.params);
       }
     };
     
@@ -124,16 +124,14 @@ try {
   // ]
   
   // Process your balances
-  if (balances[0] && balances[0].length > 0) {
-    const balanceList = balances[0]; // Array of balance entries by asset
-    
+  if (balances.length > 0) {
     // Display each asset balance
-    balanceList.forEach(balance => {
+    balances.forEach(balance => {
       console.log(`${balance.asset.toUpperCase()} balance: ${balance.amount}`);
     });
     
     // Example: find a specific asset
-    const usdcBalance = balanceList.find(b => b.asset.toLowerCase() === 'usdc');
+    const usdcBalance = balances.find(b => b.asset.toLowerCase() === 'usdc');
     if (usdcBalance) {
       console.log(`USDC balance: ${usdcBalance.amount}`);
     }
@@ -150,12 +148,12 @@ try {
 
 ```javascript
 import { ethers } from 'ethers';
-import { generateRequestId, getCurrentTimestamp } from '@erc7824/nitrolite';
+import { generateRequestId, getCurrentTimestamp, generateRequestId, parseRPCMessage, RPCMethod } from '@erc7824/nitrolite';
 
 // Function to create a signed ledger balances request
 async function createLedgerBalancesRequest(signer, participant) {
   const requestId = generateRequestId();
-  const method = 'get_ledger_balances';
+  const method = RPCMethod.GetLedgerBalances; // Use the RPC method enum for clarity
   const params = [{ participant }]; // Note: updated parameter name to 'participant'
   const timestamp = getCurrentTimestamp();
   
@@ -183,18 +181,17 @@ async function getLedgerBalances(ws, participant, signer) {
         // Set up message handler
         const handleMessage = (event) => {
           try {
-            const message = JSON.parse(event.data);
+            const message = parseRPCMessage(event.data);
             
             // Check if this is our response
-            if (message.res && 
-                message.res[0] === requestId && 
-                message.res[1] === 'get_ledger_balances') {
+            if (message.requestId === requestId && 
+                message.method === RPCMethod.GetLedgerBalances) {
               
               // Remove the listener
               ws.removeEventListener('message', handleMessage);
               
               // Resolve with the balances data
-              resolve(message.res[2]);
+              resolve(message.params);
             }
           } catch (error) {
             console.error('Error parsing message:', error);
@@ -240,7 +237,7 @@ try {
 To retrieve off-chain balances for a participant, use the `createGetLedgerBalancesMessage` helper function:
 
 ```javascript
-import { createGetLedgerBalancesMessage } from '@erc7824/nitrolite';
+import { createGetLedgerBalancesMessage, parseRPCResponse, RPCMethod } from '@erc7824/nitrolite';
 import { ethers } from 'ethers';
 
 // Function to get ledger balances for a participant
@@ -249,15 +246,15 @@ async function getLedgerBalances(ws, participant, messageSigner) {
     // Message handler for the response
     const handleMessage = (event) => {
       try {
-        const message = JSON.parse(event.data);
+        const message = parseRPCResponse(event.data);
         
         // Check if this is a response to our get_ledger_balances request
-        if (message.res && message.res[1] === 'get_ledger_balances') {
+        if (message.method === RPCMethod.GetLedgerBalances) {
           // Clean up by removing the event listener
           ws.removeEventListener('message', handleMessage);
           
           // Resolve with the balance data
-          resolve(message.res[2]);
+          resolve(message.params);
         }
       } catch (error) {
         console.error('Error parsing message:', error);
@@ -294,11 +291,9 @@ getLedgerBalances(ws, participantAddress, messageSigner)
     console.log('Channel balances:', balances);
     
     // Process and display your balances
-    if (balances[0] && balances[0].length > 0) {
-      const balanceList = balances[0]; // Array of balance entries by asset
-      
+    if (balances.length > 0) {
       console.log('My balances:');
-      balanceList.forEach(balance => {
+      balances.forEach(balance => {
         console.log(`- ${balance.asset.toUpperCase()}: ${balance.amount}`);
       });
     } else {
@@ -317,15 +312,8 @@ When you receive balance data from the ClearNode, it's helpful to format it for 
 ```javascript
 // Simple function to format your balance data for display
 function formatMyBalances(balances) {
-  if (!balances || !balances[0] || !Array.isArray(balances[0]) || balances[0].length === 0) {
-    return null; // No balance data available
-  }
-  
-  // Extract your balances from the nested structure
-  const balanceList = balances[0]; // Array of balance entries by asset
-  
   // Return formatted balance information
-  return balanceList.map(balance => ({
+  return balances.map(balance => ({
     asset: balance.asset.toUpperCase(),
     amount: balance.amount,
     // You can add additional formatting here if needed
@@ -378,11 +366,9 @@ function displayBalances(balances) {
   console.log(`Balance update at ${new Date().toLocaleTimeString()}:`);
   
   // Format and display your balances
-  if (balances[0] && balances[0].length > 0) {
-    const balanceList = balances[0]; // Array of balance entries by asset
-    
+  if (balances.length > 0) {
     console.log('My balances:');
-    balanceList.forEach(balance => {
+    balances.forEach(balance => {
       console.log(`- ${balance.asset.toUpperCase()}: ${balance.amount}`);
     });
   } else {
