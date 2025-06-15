@@ -284,8 +284,8 @@ const authRequestMsg = await createAuthRequestMessage({
   participant: '0xYourSignerAddress',
   app_name: 'Your Domain',
   expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-  scope: 'console',
-  application: '0xYourApplicationAddress',
+  scope: 'console', // optional
+  application: '0xYourApplicationAddress', // optional
   allowances: [],
 });
 
@@ -375,8 +375,8 @@ ws.onopen = async () => {
     participant: '0xYourSignerAddress',
     app_name: 'Your Domain',
     expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-    scope: 'console',
-    application: '0xYourApplicationAddress',
+    scope: 'console', // optional
+    application: '0xYourApplicationAddress', // optional
     allowances: [],
   });
   ws.send(authRequestMsg);
