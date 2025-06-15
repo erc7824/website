@@ -285,6 +285,9 @@ sequenceDiagram
 <Tabs>
   <TabItem value="auth" label="Authentication Process">
 
+> **Warning**  
+> The `allowances` parameter can not be dynamically calculated at runtime. If you’re unsure of the exact amount to authorize, it's recommended to grant an allowance covering the user’s full balance to avoid unexpected authorization errors.
+
 ```javascript
 import {
   createAuthRequestMessage,
