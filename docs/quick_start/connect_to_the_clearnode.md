@@ -319,6 +319,7 @@ ws.onmessage = async (event) => {
           },
           { 
             // Domain for EIP-712 signing
+            // Must be equal to your app_name from authRequestMsg
             name: 'Your Domain',
           },
         )
@@ -406,6 +407,7 @@ ws.onmessage = async (event) => {
           },
           { 
             // Domain for EIP-712 signing
+            // Must be equal to your app_name from authRequestMsg
             name: 'Your Domain',
           },
         )
