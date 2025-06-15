@@ -2,7 +2,17 @@
 sidebar_position: 5
 title: Connect to the ClearNode
 description: Establish connection with ClearNode for reliable off-chain transaction processing and verification.
-keywords: [erc7824, nitrolite, clearnode, off-chain, validation, messaging, nitroliterpc, websocket]
+keywords:
+  [
+    erc7824,
+    nitrolite,
+    clearnode,
+    off-chain,
+    validation,
+    messaging,
+    nitroliterpc,
+    websocket,
+  ]
 ---
 
 import Tabs from '@theme/Tabs';
@@ -43,26 +53,26 @@ After initializing your client and creating a channel, you need to establish a W
 
 ```javascript
 // Import your preferred WebSocket library
-import WebSocket from 'ws'; // Node.js
+import WebSocket from "ws"; // Node.js
 // or use the browser's built-in WebSocket
 
 // Create a WebSocket connection to the ClearNode
-const ws = new WebSocket('wss://clearnode.example.com');
+const ws = new WebSocket("wss://clearnode.example.com");
 
 // Set up basic event handlers
 ws.onopen = () => {
-  console.log('WebSocket connection established');
+  console.log("WebSocket connection established");
   // Connection is open, can now proceed with authentication
 };
 
 ws.onmessage = (event) => {
   const message = JSON.parse(event.data);
-  console.log('Received message:', message);
+  console.log("Received message:", message);
   // Process incoming messages
 };
 
 ws.onerror = (error) => {
-  console.error('WebSocket error:', error);
+  console.error("WebSocket error:", error);
 };
 
 ws.onclose = (event) => {
@@ -84,136 +94,143 @@ class ClearNodeConnection {
     this.reconnectInterval = 3000; // ms
     this.messageHandlers = new Map();
   }
-  
+
   // Register message handlers
   onMessage(type, handler) {
     this.messageHandlers.set(type, handler);
   }
-  
+
   connect() {
     this.ws = new WebSocket(this.url);
-    
+
     this.ws.onopen = this.handleOpen.bind(this);
     this.ws.onmessage = this.handleMessage.bind(this);
     this.ws.onerror = this.handleError.bind(this);
     this.ws.onclose = this.handleClose.bind(this);
   }
-  
+
   handleOpen() {
     console.log(`Connected to ClearNode at ${this.url}`);
     this.isConnected = true;
     this.reconnectAttempts = 0;
-    
+
     // Emit connected event
-    this.emit('connected');
+    this.emit("connected");
   }
-  
+
   handleMessage(event) {
     try {
       const message = JSON.parse(event.data);
-      
+
       // Determine message type (auth_challenge, auth_success, etc.)
-      const messageType = message.res ? message.res[1] : 'unknown';
-      
+      const messageType = message.res ? message.res[1] : "unknown";
+
       // Emit specific message event
-      this.emit('message', message);
-      
+      this.emit("message", message);
+
       // Call specific handler if registered
       if (this.messageHandlers.has(messageType)) {
         this.messageHandlers.get(messageType)(message);
       }
     } catch (error) {
-      console.error('Error handling message:', error);
+      console.error("Error handling message:", error);
     }
   }
-  
+
   handleError(error) {
-    console.error('WebSocket error:', error);
-    this.emit('error', error);
+    console.error("WebSocket error:", error);
+    this.emit("error", error);
   }
-  
+
   handleClose(event) {
     this.isConnected = false;
     console.log(`WebSocket closed: ${event.code} ${event.reason}`);
-    
+
     // Emit disconnected event
-    this.emit('disconnected', event);
-    
+    this.emit("disconnected", event);
+
     // Attempt to reconnect
     this.attemptReconnect();
   }
-  
+
   attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Maximum reconnection attempts reached');
+      console.error("Maximum reconnection attempts reached");
       return;
     }
-    
+
     this.reconnectAttempts++;
-    const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
-    
-    console.log(`Attempting to reconnect in ${delay}ms (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-    
+    const delay =
+      this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
+
+    console.log(
+      `Attempting to reconnect in ${delay}ms (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+    );
+
     setTimeout(() => {
-      console.log('Reconnecting...');
+      console.log("Reconnecting...");
       this.connect();
     }, delay);
   }
-  
+
   send(message) {
     if (!this.isConnected) {
-      console.error('Cannot send message: not connected');
+      console.error("Cannot send message: not connected");
       return false;
     }
-    
+
     try {
-      this.ws.send(typeof message === 'string' ? message : JSON.stringify(message));
+      this.ws.send(
+        typeof message === "string" ? message : JSON.stringify(message)
+      );
       return true;
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error("Error sending message:", error);
       return false;
     }
   }
-  
+
   disconnect() {
     if (this.ws) {
-      this.ws.close(1000, 'User initiated disconnect');
+      this.ws.close(1000, "User initiated disconnect");
     }
   }
-  
+
   // Simple event system
   #events = {};
-  
+
   on(event, callback) {
     if (!this.#events[event]) this.#events[event] = [];
     this.#events[event].push(callback);
     return this;
   }
-  
+
   off(event, callback) {
     if (!this.#events[event]) return this;
     if (!callback) {
       delete this.#events[event];
       return this;
     }
-    this.#events[event] = this.#events[event].filter(cb => cb !== callback);
+    this.#events[event] = this.#events[event].filter((cb) => cb !== callback);
     return this;
   }
-  
+
   emit(event, ...args) {
     if (!this.#events[event]) return false;
-    this.#events[event].forEach(callback => callback(...args));
+    this.#events[event].forEach((callback) => callback(...args));
     return true;
   }
 }
 
 // Usage
-const clearNodeConnection = new ClearNodeConnection('wss://clearnode.example.com');
+const clearNodeConnection = new ClearNodeConnection(
+  "wss://clearnode.example.com"
+);
 clearNodeConnection.connect();
 
 // Register event handlers
-clearNodeConnection.on('connected', () => {
-  console.log('Connection established, ready to authenticate');
+clearNodeConnection.on("connected", () => {
+  console.log("Connection established, ready to authenticate");
 });
 
 // Later, when you're done
@@ -240,21 +257,21 @@ This flow ensures that only authorized participants with valid signing keys can 
 sequenceDiagram
     participant Client as Your Application
     participant CN as ClearNode
-    
+
     Client->>CN: WebSocket Connection Request
     CN->>Client: Connection Established
-    
+
     Client->>Client: Create auth_request
     Client->>CN: Send auth_request
-    
+
     CN->>CN: Generate random challenge nonce
     CN->>Client: Send auth_challenge with nonce
-    
+
     Client->>Client: Sign challenge using EIP712
     Client->>CN: Send auth_verify with signature
-    
+
     CN->>CN: Verify signature against address
-    
+
     alt Authentication Success
         CN->>Client: Send auth_success
         Note over Client,CN: Client is now authenticated
@@ -270,29 +287,29 @@ sequenceDiagram
 
 ```javascript
 import {
-  createAuthRequestMessage, 
-  createAuthVerifyMessage, 
-  createEIP712AuthMessageSigner, 
+  createAuthRequestMessage,
+  createAuthVerifyMessage,
+  createEIP712AuthMessageSigner,
   parseRPCResponse,
   RPCMethod,
-} from '@erc7824/nitrolite';
-import { ethers } from 'ethers';
+} from "@erc7824/nitrolite";
+import { ethers } from "ethers";
 
 // Create and send auth_request
 const authRequestMsg = await createAuthRequestMessage({
-  wallet: '0xYourWalletAddress',
-  participant: '0xYourSignerAddress',
-  app_name: 'Your Domain',
-  expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-  scope: 'console',
-  application: '0xYourApplicationAddress',
+  wallet: "0xYourWalletAddress",
+  participant: "0xYourSignerAddress",
+  app_name: "Your Domain",
+  expire: String(Math.floor(Date.now() / 1000) + 3600), // 1 hour expiration
+  scope: "console",
+  application: "0xYourApplicationAddress",
   allowances: [],
 });
 
 // After WebSocket connection is established
 ws.onopen = async () => {
-  console.log('WebSocket connection established');
-  
+  console.log("WebSocket connection established");
+
   ws.send(authRequestMsg);
 };
 
@@ -300,16 +317,16 @@ ws.onopen = async () => {
 ws.onmessage = async (event) => {
   try {
     const message = parseRPCResponse(event.data);
-    
+
     // Handle auth_challenge response
     switch (message.method) {
       case RPCMethod.AuthChallenge:
-        console.log('Received auth challenge');
+        console.log("Received auth challenge");
 
         // Create EIP-712 message signer function
         const eip712MessageSigner = createEIP712AuthMessageSigner(
           walletClient, // Your wallet client instance
-          {  
+          {
             // EIP-712 message structure, data should match auth_request
             scope: authRequestMsg.scope,
             application: authRequestMsg.application,
@@ -317,37 +334,37 @@ ws.onmessage = async (event) => {
             expire: authRequestMsg.expire,
             allowances: authRequestMsg.allowances,
           },
-          { 
+          {
             // Domain for EIP-712 signing
-            name: 'Your Domain',
-          },
-        )
-        
+            name: "Your Domain",
+          }
+        );
+
         // Create and send auth_verify with signed challenge
         const authVerifyMsg = await createAuthVerifyMessage(
           eip712MessageSigner, // Our custom eip712 signer function
-          message,
+          message
         );
-        
+
         ws.send(authVerifyMsg);
         break;
       // Handle auth_success or auth_failure
       case RPCMethod.AuthVerify:
         if (!message.params.success) {
-          console.log('Authentication failed');
+          console.log("Authentication failed");
           return;
         }
-        console.log('Authentication successful');
+        console.log("Authentication successful");
         // Now you can start using the channel
 
-        window.localStorage.setItem('clearnode_jwt', message.params.jwtToken); // Store JWT token for future use
+        window.localStorage.setItem("clearnode_jwt", message.params.jwtToken); // Store JWT token for future use
         break;
       case RPCMethod.Error: {
-        console.error('Authentication failed:', message.params.error);
+        console.error("Authentication failed:", message.params.error);
       }
     }
   } catch (error) {
-    console.error('Error handling message:', error);
+    console.error("Error handling message:", error);
   }
 };
 ```
@@ -356,26 +373,26 @@ ws.onmessage = async (event) => {
   <TabItem value="challenge" label="Manual Challenge Handling">
 
 ```javascript
-import { 
-  createAuthRequestMessage, 
+import {
+  createAuthRequestMessage,
   createAuthVerifyMessageFromChallenge,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
-  createEIP712AuthMessageSigner, 
+  createEIP712AuthMessageSigner,
   parseRPCResponse,
   RPCMethod,
-} from '@erc7824/nitrolite';
-import { ethers } from 'ethers';
+} from "@erc7824/nitrolite";
+import { ethers } from "ethers";
 
 // After connection is established, send auth request
 ws.onopen = async () => {
   const authRequestMsg = await createAuthRequestMessage({
-    wallet: '0xYourWalletAddress',
-    participant: '0xYourSignerAddress',
-    app_name: 'Your Domain',
-    expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-    scope: 'console',
-    application: '0xYourApplicationAddress',
+    wallet: "0xYourWalletAddress",
+    participant: "0xYourSignerAddress",
+    app_name: "Your Domain",
+    expire: String(Math.floor(Date.now() / 1000) + 3600), // 1 hour expiration
+    scope: "console",
+    application: "0xYourApplicationAddress",
     allowances: [],
   });
   ws.send(authRequestMsg);
@@ -385,18 +402,16 @@ ws.onopen = async () => {
 ws.onmessage = async (event) => {
   try {
     const message = parseRPCResponse(event.data);
-    
+
     if (message.method === RPCMethod.AuthChallenge) {
       // Extract the challenge manually from the response
-      if (
-        message.params.challengeMessage
-      ) {
+      if (message.params.challengeMessage) {
         const challenge = message.params.challengeMessage;
 
         // Create EIP-712 message signer function
         const eip712MessageSigner = createEIP712AuthMessageSigner(
           walletClient, // Your wallet client instance
-          {  
+          {
             // EIP-712 message structure, data should match auth_request
             scope: authRequestMsg.scope,
             application: authRequestMsg.application,
@@ -404,25 +419,25 @@ ws.onmessage = async (event) => {
             expire: authRequestMsg.expire,
             allowances: authRequestMsg.allowances,
           },
-          { 
+          {
             // Domain for EIP-712 signing
-            name: 'Your Domain',
-          },
-        )
-        
+            name: "Your Domain",
+          }
+        );
+
         // Create auth_verify with the explicitly provided challenge
         const authVerifyMsg = await createAuthVerifyMessageFromChallenge(
           eip712MessageSigner,
           challenge
         );
-        
+
         ws.send(authVerifyMsg);
       } else {
-        console.error('Malformed challenge response');
+        console.error("Malformed challenge response");
       }
     }
   } catch (error) {
-    console.error('Error handling message:', error);
+    console.error("Error handling message:", error);
   }
 };
 ```
@@ -431,21 +446,25 @@ ws.onmessage = async (event) => {
   <TabItem value="reconnect" label="Reconnect">
 
 ```javascript
-import { createAuthVerifyMessageWithJWT, parseRPCResponse, RPCMethod } from '@erc7824/nitrolite';
-import { ethers } from 'ethers';
+import {
+  createAuthVerifyMessageWithJWT,
+  parseRPCResponse,
+  RPCMethod,
+} from "@erc7824/nitrolite";
+import { ethers } from "ethers";
 
 // After WebSocket connection is established
 ws.onopen = async () => {
-  console.log('WebSocket connection established');
-  
+  console.log("WebSocket connection established");
+
   // Create and send auth_verify with JWT for reconnection
   // Get the stored JWT token
-  const jwtToken = window.localStorage.getItem('clearnode_jwt');
+  const jwtToken = window.localStorage.getItem("clearnode_jwt");
 
   const authRequestMsg = await createAuthVerifyMessageWithJWT(
-    jwtToken, // JWT token for reconnection
+    jwtToken // JWT token for reconnection
   );
-  
+
   ws.send(authRequestMsg);
 };
 
@@ -453,21 +472,21 @@ ws.onopen = async () => {
 ws.onmessage = async (event) => {
   try {
     const message = parseRPCResponse(event.data);
-    
-      // Handle auth_success or auth_failure
+
+    // Handle auth_success or auth_failure
     switch (message.method) {
       case RPCMethod.AuthVerify:
         if (message.params.success) {
-          console.log('Authentication successful');
+          console.log("Authentication successful");
           // Now you can start using the channel
         }
         break;
       case RPCMethod.Error:
-        console.error('Authentication failed:', message.params.error);
+        console.error("Authentication failed:", message.params.error);
         break;
     }
   } catch (error) {
-    console.error('Error handling message:', error);
+    console.error("Error handling message:", error);
   }
 };
 ```
@@ -493,7 +512,7 @@ The format of the EIP-712 message is as follows:
       { "name": "wallet", "type": "address" },
       { "name": "application", "type": "address" },
       { "name": "participant", "type": "address" },
-      { "name": "expire", "type": "uint256" },
+      { "name": "expire", "type": "string" },
       { "name": "allowances", "type": "Allowances[]" }
     ],
     "Allowance": [
@@ -512,7 +531,7 @@ The format of the EIP-712 message is as follows:
     wallet: '0xYourWalletAddress',
     application: '0xYourApplicationAddress',
     participant: '0xYourSignerAddress',
-    expire: 100500,
+    expire: "100500",
     allowances: []
   }
 }
@@ -554,34 +573,41 @@ const messageSigner = async (payload: RequestData | ResponsePayload): Promise<He
 ```
 
 ## Getting Channel Information
+
 Так
 After authenticating with a ClearNode, you can request information about your channels. This is useful to verify your connection is working correctly and to retrieve channel data.
 
 ```javascript
-import { createGetChannelsMessage, parseRPCResponse, RPCMethod } from '@erc7824/nitrolite';
+import {
+  createGetChannelsMessage,
+  parseRPCResponse,
+  RPCMethod,
+} from "@erc7824/nitrolite";
 
 // Example of using the function after authentication is complete
-ws.addEventListener('message', async (event) => {
+ws.addEventListener("message", async (event) => {
   const message = parseRPCResponse(event.data);
-  
+
   // Check if this is a successful authentication message
   if (message.method === RPCMethod.AuthVerify && message.params.success) {
-    console.log('Successfully authenticated, requesting channel information...');
-    
+    console.log(
+      "Successfully authenticated, requesting channel information..."
+    );
+
     // Request channel information using the built-in helper function
     const getChannelsMsg = await createGetChannelsMessage(
       messageSigner, // Provide message signer function from previous example
       client.stateWalletClient.account.address
     );
-    
+
     ws.send(getChannelsMsg);
   }
-  
+
   // Handle get_channels response
   if (message.method === RPCMethod.GetChannels) {
-    console.log('Received channels information:');
+    console.log("Received channels information:");
     const channelsList = message.params;
-    
+
     if (channelsList && channelsList.length > 0) {
       channelsList.forEach((channel, index) => {
         console.log(`Channel ${index + 1}:`);
@@ -599,7 +625,7 @@ ws.addEventListener('message', async (event) => {
         console.log(`- Updated: ${channel.updated_at}`);
       });
     } else {
-      console.log('No active channels found');
+      console.log("No active channels found");
     }
   }
 });
@@ -641,14 +667,14 @@ Here are examples of integrating ClearNode WebSocket connections with various fr
 ```javascript
 import { useState, useEffect, useCallback } from 'react';
 import { ethers } from 'ethers';
-import { 
-  createAuthRequestMessage, 
+import {
+  createAuthRequestMessage,
   createAuthVerifyMessage,
   createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
-  generateRequestId, 
-  getCurrentTimestamp 
+  generateRequestId,
+  getCurrentTimestamp
 } from '@erc7824/nitrolite';
 
 // Custom hook for ClearNode connection
@@ -657,11 +683,11 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState(null);
-  
+
   // Message signer function
   const messageSigner = useCallback(async (payload) => {
     if (!stateWallet) throw new Error('State wallet not available');
-    
+
     try {
       const message = JSON.stringify(payload);
       const digestHex = ethers.id(message);
@@ -673,33 +699,33 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
       throw error;
     }
   }, [stateWallet]);
-  
+
   // Create a signed request
   const createSignedRequest = useCallback(async (method, params = []) => {
     if (!stateWallet) throw new Error('State wallet not available');
-    
+
     const requestId = generateRequestId();
     const timestamp = getCurrentTimestamp();
     const requestData = [requestId, method, params, timestamp];
     const request = { req: requestData };
-    
+
     // Sign the request
     const message = JSON.stringify(request);
     const digestHex = ethers.id(message);
     const messageBytes = ethers.getBytes(digestHex);
     const { serialized: signature } = stateWallet.signingKey.sign(messageBytes);
     request.sig = [signature];
-    
+
     return JSON.stringify(request);
   }, [stateWallet]);
-  
+
   // Send a message to the ClearNode
   const sendMessage = useCallback((message) => {
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       setError('WebSocket not connected');
       return false;
     }
-    
+
     try {
       ws.send(typeof message === 'string' ? message : JSON.stringify(message));
       return true;
@@ -708,21 +734,21 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
       return false;
     }
   }, [ws]);
-  
+
   // Connect to the ClearNode
   const connect = useCallback(() => {
     if (ws) {
       ws.close();
     }
-    
+
     setConnectionStatus('connecting');
     setError(null);
-    
+
     const newWs = new WebSocket(clearNodeUrl);
-    
+
     newWs.onopen = async () => {
       setConnectionStatus('connected');
-      
+
       // Start authentication process
       try {
         const authRequest = await createAuthRequestMessage(
@@ -734,11 +760,11 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
         setError(`Authentication request failed: ${err.message}`);
       }
     };
-    
+
     newWs.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
-        
+
         // Handle authentication flow
         if (message.res && message.res[1] === 'auth_challenge') {
           try {
@@ -757,26 +783,26 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
           setIsAuthenticated(false);
           setError(`Authentication failed: ${message.res[2]}`);
         }
-        
+
         // Additional message handling can be added here
       } catch (err) {
         console.error('Error handling message:', err);
       }
     };
-    
+
     newWs.onerror = (error) => {
       setError(`WebSocket error: ${error.message}`);
       setConnectionStatus('error');
     };
-    
+
     newWs.onclose = () => {
       setConnectionStatus('disconnected');
       setIsAuthenticated(false);
     };
-    
+
     setWs(newWs);
   }, [clearNodeUrl, messageSigner, stateWallet]);
-  
+
   // Disconnect from the ClearNode
   const disconnect = useCallback(() => {
     if (ws) {
@@ -784,13 +810,13 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
       setWs(null);
     }
   }, [ws]);
-  
+
   // Connect when the component mounts
   useEffect(() => {
     if (clearNodeUrl && stateWallet) {
       connect();
     }
-    
+
     // Clean up on unmount
     return () => {
       if (ws) {
@@ -798,7 +824,7 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
       }
     };
   }, [clearNodeUrl, stateWallet, connect]);
-  
+
   // Create helper methods for common operations
   const getChannels = useCallback(async () => {
     // Using the built-in helper function from NitroliteRPC
@@ -808,7 +834,7 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   }, [messageSigner, sendMessage, stateWallet]);
-  
+
   const getLedgerBalances = useCallback(async (channelId) => {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetLedgerBalancesMessage(
@@ -817,7 +843,7 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   }, [messageSigner, sendMessage]);
-  
+
   const getConfig = useCallback(async () => {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetConfigMessage(
@@ -826,7 +852,7 @@ function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   }, [messageSigner, sendMessage, stateWallet]);
-  
+
   return {
     connectionStatus,
     isAuthenticated,
@@ -851,15 +877,15 @@ function ClearNodeComponent() {
     error,
     getChannels
   } = useClearNodeConnection('wss://clearnode.example.com', stateWallet);
-  
+
   return (
     <div>
       <p>Status: {connectionStatus}</p>
       <p>Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
       {error && <p className="error">Error: {error}</p>}
-      
-      <button 
-        onClick={getChannels} 
+
+      <button
+        onClick={getChannels}
         disabled={!isAuthenticated}
       >
         Get Channels
@@ -874,80 +900,85 @@ function ClearNodeComponent() {
 
 ```typescript
 // In an Angular service (clearnode.service.ts)
-import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { ethers } from 'ethers';
-import { 
-  createAuthRequestMessage, 
+import { Injectable } from "@angular/core";
+import { BehaviorSubject, Observable } from "rxjs";
+import { ethers } from "ethers";
+import {
+  createAuthRequestMessage,
   createAuthVerifyMessage,
   createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
-  generateRequestId, 
-  getCurrentTimestamp 
-} from '@erc7824/nitrolite';
+  generateRequestId,
+  getCurrentTimestamp,
+} from "@erc7824/nitrolite";
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class ClearNodeService {
   private ws: WebSocket | null = null;
-  private connectionStatusSource = new BehaviorSubject<string>('disconnected');
+  private connectionStatusSource = new BehaviorSubject<string>("disconnected");
   private isAuthenticatedSource = new BehaviorSubject<boolean>(false);
   private errorSource = new BehaviorSubject<string | null>(null);
   private messageSubject = new BehaviorSubject<any>(null);
-  
+
   // Public observables
   connectionStatus$ = this.connectionStatusSource.asObservable();
   isAuthenticated$ = this.isAuthenticatedSource.asObservable();
   error$ = this.errorSource.asObservable();
   message$ = this.messageSubject.asObservable();
-  
+
   // Custom message signer
   private async messageSigner(payload: any, stateWallet: any): Promise<string> {
     try {
       const message = JSON.stringify(payload);
       const digestHex = ethers.id(message);
       const messageBytes = ethers.getBytes(digestHex);
-      const { serialized: signature } = stateWallet.signingKey.sign(messageBytes);
+      const { serialized: signature } =
+        stateWallet.signingKey.sign(messageBytes);
       return signature;
     } catch (error) {
       console.error("Error signing message:", error);
       throw error;
     }
   }
-  
+
   // Create a signed request
-  async createSignedRequest(method: string, params: any[], stateWallet: any): Promise<string> {
+  async createSignedRequest(
+    method: string,
+    params: any[],
+    stateWallet: any
+  ): Promise<string> {
     const requestId = generateRequestId();
     const timestamp = getCurrentTimestamp();
     const requestData = [requestId, method, params, timestamp];
     const request: any = { req: requestData };
-    
+
     // Sign the request
     const message = JSON.stringify(request);
     const digestHex = ethers.id(message);
     const messageBytes = ethers.getBytes(digestHex);
     const { serialized: signature } = stateWallet.signingKey.sign(messageBytes);
     request.sig = [signature];
-    
+
     return JSON.stringify(request);
   }
-  
+
   // Connect to the ClearNode
   connect(url: string, stateWallet: any): void {
     if (this.ws) {
       this.ws.close();
     }
-    
-    this.connectionStatusSource.next('connecting');
+
+    this.connectionStatusSource.next("connecting");
     this.errorSource.next(null);
-    
+
     this.ws = new WebSocket(url);
-    
+
     this.ws.onopen = async () => {
-      this.connectionStatusSource.next('connected');
-      
+      this.connectionStatusSource.next("connected");
+
       // Start authentication process
       try {
         const authRequest = await createAuthRequestMessage(
@@ -959,14 +990,14 @@ export class ClearNodeService {
         this.errorSource.next(`Authentication request failed: ${err.message}`);
       }
     };
-    
+
     this.ws.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
         this.messageSubject.next(message);
-        
+
         // Handle authentication flow
-        if (message.res && message.res[1] === 'auth_challenge') {
+        if (message.res && message.res[1] === "auth_challenge") {
           try {
             const authVerify = await createAuthVerifyMessage(
               (payload) => this.messageSigner(payload, stateWallet),
@@ -975,30 +1006,32 @@ export class ClearNodeService {
             );
             this.ws!.send(authVerify);
           } catch (err: any) {
-            this.errorSource.next(`Authentication verification failed: ${err.message}`);
+            this.errorSource.next(
+              `Authentication verification failed: ${err.message}`
+            );
           }
-        } else if (message.res && message.res[1] === 'auth_success') {
+        } else if (message.res && message.res[1] === "auth_success") {
           this.isAuthenticatedSource.next(true);
-        } else if (message.res && message.res[1] === 'auth_failure') {
+        } else if (message.res && message.res[1] === "auth_failure") {
           this.isAuthenticatedSource.next(false);
           this.errorSource.next(`Authentication failed: ${message.res[2]}`);
         }
       } catch (err: any) {
-        console.error('Error handling message:', err);
+        console.error("Error handling message:", err);
       }
     };
-    
+
     this.ws.onerror = (error) => {
       this.errorSource.next(`WebSocket error`);
-      this.connectionStatusSource.next('error');
+      this.connectionStatusSource.next("error");
     };
-    
+
     this.ws.onclose = () => {
-      this.connectionStatusSource.next('disconnected');
+      this.connectionStatusSource.next("disconnected");
       this.isAuthenticatedSource.next(false);
     };
   }
-  
+
   // Disconnect from the ClearNode
   disconnect(): void {
     if (this.ws) {
@@ -1006,23 +1039,25 @@ export class ClearNodeService {
       this.ws = null;
     }
   }
-  
+
   // Send a message to the ClearNode
   sendMessage(message: string | object): boolean {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      this.errorSource.next('WebSocket not connected');
+      this.errorSource.next("WebSocket not connected");
       return false;
     }
-    
+
     try {
-      this.ws.send(typeof message === 'string' ? message : JSON.stringify(message));
+      this.ws.send(
+        typeof message === "string" ? message : JSON.stringify(message)
+      );
       return true;
     } catch (error: any) {
       this.errorSource.next(`Error sending message: ${error.message}`);
       return false;
     }
   }
-  
+
   // Helper methods for common operations
   async getChannels(stateWallet: any): Promise<boolean> {
     // Using the built-in helper function from NitroliteRPC
@@ -1032,8 +1067,11 @@ export class ClearNodeService {
     );
     return this.sendMessage(message);
   }
-  
-  async getLedgerBalances(channelId: string, stateWallet: any): Promise<boolean> {
+
+  async getLedgerBalances(
+    channelId: string,
+    stateWallet: any
+  ): Promise<boolean> {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetLedgerBalancesMessage(
       (payload) => this.messageSigner(payload, stateWallet),
@@ -1041,7 +1079,7 @@ export class ClearNodeService {
     );
     return this.sendMessage(message);
   }
-  
+
   async getConfig(stateWallet: any): Promise<boolean> {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetConfigMessage(
@@ -1053,67 +1091,63 @@ export class ClearNodeService {
 }
 
 // Usage in a component
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { ClearNodeService } from './clearnode.service';
-import { Subscription } from 'rxjs';
+import { Component, OnInit, OnDestroy } from "@angular/core";
+import { ClearNodeService } from "./clearnode.service";
+import { Subscription } from "rxjs";
 
 @Component({
-  selector: 'app-clearnode',
+  selector: "app-clearnode",
   template: `
     <div>
       <p>Status: {{ connectionStatus }}</p>
-      <p>Authenticated: {{ isAuthenticated ? 'Yes' : 'No' }}</p>
+      <p>Authenticated: {{ isAuthenticated ? "Yes" : "No" }}</p>
       <p *ngIf="error" class="error">Error: {{ error }}</p>
-      
-      <button 
-        (click)="getChannels()" 
-        [disabled]="!isAuthenticated"
-      >
+
+      <button (click)="getChannels()" [disabled]="!isAuthenticated">
         Get Channels
       </button>
     </div>
-  `
+  `,
 })
 export class ClearNodeComponent implements OnInit, OnDestroy {
-  connectionStatus = 'disconnected';
+  connectionStatus = "disconnected";
   isAuthenticated = false;
   error: string | null = null;
-  
+
   private subscriptions: Subscription[] = [];
   private stateWallet: any; // Initialize your state wallet
-  
+
   constructor(private clearNodeService: ClearNodeService) {}
-  
+
   ngOnInit() {
     this.subscriptions.push(
       this.clearNodeService.connectionStatus$.subscribe(
-        status => this.connectionStatus = status
+        (status) => (this.connectionStatus = status)
       ),
       this.clearNodeService.isAuthenticated$.subscribe(
-        auth => this.isAuthenticated = auth
+        (auth) => (this.isAuthenticated = auth)
       ),
-      this.clearNodeService.error$.subscribe(
-        err => this.error = err
-      ),
-      this.clearNodeService.message$.subscribe(
-        message => {
-          if (message) {
-            console.log('Received message:', message);
-            // Handle specific message types here
-          }
+      this.clearNodeService.error$.subscribe((err) => (this.error = err)),
+      this.clearNodeService.message$.subscribe((message) => {
+        if (message) {
+          console.log("Received message:", message);
+          // Handle specific message types here
         }
-      )
+      })
     );
-    
+
     // Connect to ClearNode
-    this.clearNodeService.connect('wss://clearnode.example.com', this.stateWallet);
+    this.clearNodeService.connect(
+      "wss://clearnode.example.com",
+      this.stateWallet
+    );
   }
-  
+
   ngOnDestroy() {
     this.clearNodeService.disconnect();
-    this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.subscriptions.forEach((sub) => sub.unsubscribe());
   }
-  
+
   getChannels() {
     this.clearNodeService.getChannels(this.stateWallet);
   }
@@ -1125,87 +1159,90 @@ export class ClearNodeComponent implements OnInit, OnDestroy {
 
 ```javascript
 // In a Vue component or Composable
-import { ref, onMounted, onUnmounted } from 'vue';
-import { ethers } from 'ethers';
-import { 
-  createAuthRequestMessage, 
+import { ref, onMounted, onUnmounted } from "vue";
+import { ethers } from "ethers";
+import {
+  createAuthRequestMessage,
   createAuthVerifyMessage,
   createGetChannelsMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
-  generateRequestId, 
-  getCurrentTimestamp 
-} from '@erc7824/nitrolite';
+  generateRequestId,
+  getCurrentTimestamp,
+} from "@erc7824/nitrolite";
 
 // ClearNode connection composable
 export function useClearNodeConnection(clearNodeUrl, stateWallet) {
   const ws = ref(null);
-  const connectionStatus = ref('disconnected');
+  const connectionStatus = ref("disconnected");
   const isAuthenticated = ref(false);
   const error = ref(null);
   const messages = ref([]);
-  
+
   // Message signer function
   const messageSigner = async (payload) => {
     try {
       const message = JSON.stringify(payload);
       const digestHex = ethers.id(message);
       const messageBytes = ethers.getBytes(digestHex);
-      const { serialized: signature } = stateWallet.signingKey.sign(messageBytes);
+      const { serialized: signature } =
+        stateWallet.signingKey.sign(messageBytes);
       return signature;
     } catch (error) {
       console.error("Error signing message:", error);
       throw error;
     }
   };
-  
+
   // Create a signed request
   const createSignedRequest = async (method, params = []) => {
     const requestId = generateRequestId();
     const timestamp = getCurrentTimestamp();
     const requestData = [requestId, method, params, timestamp];
     const request = { req: requestData };
-    
+
     // Sign the request
     const message = JSON.stringify(request);
     const digestHex = ethers.id(message);
     const messageBytes = ethers.getBytes(digestHex);
     const { serialized: signature } = stateWallet.signingKey.sign(messageBytes);
     request.sig = [signature];
-    
+
     return JSON.stringify(request);
   };
-  
+
   // Send a message to the ClearNode
   const sendMessage = (message) => {
     if (!ws.value || ws.value.readyState !== WebSocket.OPEN) {
-      error.value = 'WebSocket not connected';
+      error.value = "WebSocket not connected";
       return false;
     }
-    
+
     try {
-      ws.value.send(typeof message === 'string' ? message : JSON.stringify(message));
+      ws.value.send(
+        typeof message === "string" ? message : JSON.stringify(message)
+      );
       return true;
     } catch (err) {
       error.value = `Error sending message: ${err.message}`;
       return false;
     }
   };
-  
+
   // Connect to the ClearNode
   const connect = () => {
     if (ws.value) {
       ws.value.close();
     }
-    
-    connectionStatus.value = 'connecting';
+
+    connectionStatus.value = "connecting";
     error.value = null;
-    
+
     const newWs = new WebSocket(clearNodeUrl);
-    
+
     newWs.onopen = async () => {
-      connectionStatus.value = 'connected';
-      
+      connectionStatus.value = "connected";
+
       // Start authentication process
       try {
         const authRequest = await createAuthRequestMessage(
@@ -1217,14 +1254,14 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
         error.value = `Authentication request failed: ${err.message}`;
       }
     };
-    
+
     newWs.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
         messages.value.push(message);
-        
+
         // Handle authentication flow
-        if (message.res && message.res[1] === 'auth_challenge') {
+        if (message.res && message.res[1] === "auth_challenge") {
           try {
             const authVerify = await createAuthVerifyMessage(
               messageSigner,
@@ -1235,30 +1272,30 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
           } catch (err) {
             error.value = `Authentication verification failed: ${err.message}`;
           }
-        } else if (message.res && message.res[1] === 'auth_success') {
+        } else if (message.res && message.res[1] === "auth_success") {
           isAuthenticated.value = true;
-        } else if (message.res && message.res[1] === 'auth_failure') {
+        } else if (message.res && message.res[1] === "auth_failure") {
           isAuthenticated.value = false;
           error.value = `Authentication failed: ${message.res[2]}`;
         }
       } catch (err) {
-        console.error('Error handling message:', err);
+        console.error("Error handling message:", err);
       }
     };
-    
+
     newWs.onerror = (err) => {
-      error.value = 'WebSocket error';
-      connectionStatus.value = 'error';
+      error.value = "WebSocket error";
+      connectionStatus.value = "error";
     };
-    
+
     newWs.onclose = () => {
-      connectionStatus.value = 'disconnected';
+      connectionStatus.value = "disconnected";
       isAuthenticated.value = false;
     };
-    
+
     ws.value = newWs;
   };
-  
+
   // Disconnect from the ClearNode
   const disconnect = () => {
     if (ws.value) {
@@ -1266,7 +1303,7 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
       ws.value = null;
     }
   };
-  
+
   // Helper methods for common operations
   const getChannels = async () => {
     // Using the built-in helper function from NitroliteRPC
@@ -1276,7 +1313,7 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   };
-  
+
   const getLedgerBalances = async (channelId) => {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetLedgerBalancesMessage(
@@ -1285,7 +1322,7 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   };
-  
+
   const getConfig = async () => {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetConfigMessage(
@@ -1294,18 +1331,18 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
     );
     return sendMessage(message);
   };
-  
+
   // Connect and disconnect with the component lifecycle
   onMounted(() => {
     if (clearNodeUrl && stateWallet) {
       connect();
     }
   });
-  
+
   onUnmounted(() => {
     disconnect();
   });
-  
+
   return {
     connectionStatus,
     isAuthenticated,
@@ -1317,7 +1354,7 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
     getChannels,
     getLedgerBalances,
     getConfig,
-    createSignedRequest
+    createSignedRequest,
   };
 }
 
@@ -1325,8 +1362,8 @@ export function useClearNodeConnection(clearNodeUrl, stateWallet) {
 export default {
   setup() {
     // Initialize your state wallet
-    const stateWallet = {}; 
-    
+    const stateWallet = {};
+
     const {
       connectionStatus,
       isAuthenticated,
@@ -1334,9 +1371,9 @@ export default {
       messages,
       getChannels,
       getLedgerBalances,
-      getConfig
-    } = useClearNodeConnection('wss://clearnode.example.com', stateWallet);
-    
+      getConfig,
+    } = useClearNodeConnection("wss://clearnode.example.com", stateWallet);
+
     return {
       connectionStatus,
       isAuthenticated,
@@ -1344,9 +1381,9 @@ export default {
       messages,
       getChannels,
       getLedgerBalances,
-      getConfig
+      getConfig,
     };
-  }
+  },
 };
 ```
 
@@ -1354,17 +1391,17 @@ export default {
   <TabItem value="nodejs" label="Node.js">
 
 ```javascript
-const WebSocket = require('ws');
-const { ethers } = require('ethers');
-const { 
-  createAuthRequestMessage, 
+const WebSocket = require("ws");
+const { ethers } = require("ethers");
+const {
+  createAuthRequestMessage,
   createAuthVerifyMessage,
   createGetLedgerBalancesMessage,
   createGetConfigMessage,
-  generateRequestId, 
-  getCurrentTimestamp 
-} = require('@erc7824/nitrolite');
-const EventEmitter = require('events');
+  generateRequestId,
+  getCurrentTimestamp,
+} = require("@erc7824/nitrolite");
+const EventEmitter = require("events");
 
 class ClearNodeConnection extends EventEmitter {
   constructor(url, stateWallet) {
@@ -1379,107 +1416,116 @@ class ClearNodeConnection extends EventEmitter {
     this.reconnectInterval = 3000; // ms
     this.requestMap = new Map(); // Track pending requests
   }
-  
+
   // Message signer function
   async messageSigner(payload) {
     try {
       const message = JSON.stringify(payload);
       const digestHex = ethers.id(message);
       const messageBytes = ethers.getBytes(digestHex);
-      const { serialized: signature } = this.stateWallet.signingKey.sign(messageBytes);
+      const { serialized: signature } =
+        this.stateWallet.signingKey.sign(messageBytes);
       return signature;
     } catch (error) {
       console.error("Error signing message:", error);
       throw error;
     }
   }
-  
+
   // Create a signed request
-  async createSignedRequest(method, params = [], requestId = generateRequestId()) {
+  async createSignedRequest(
+    method,
+    params = [],
+    requestId = generateRequestId()
+  ) {
     const timestamp = getCurrentTimestamp();
     const requestData = [requestId, method, params, timestamp];
     const request = { req: requestData };
-    
+
     // Sign the request
     const message = JSON.stringify(request);
     const digestHex = ethers.id(message);
     const messageBytes = ethers.getBytes(digestHex);
-    const { serialized: signature } = this.stateWallet.signingKey.sign(messageBytes);
+    const { serialized: signature } =
+      this.stateWallet.signingKey.sign(messageBytes);
     request.sig = [signature];
-    
+
     return { request, requestId };
   }
-  
+
   // Connect to the ClearNode
   async connect() {
     return new Promise((resolve, reject) => {
       if (this.ws) {
         this.ws.close();
       }
-      
-      this.emit('connecting');
-      
+
+      this.emit("connecting");
+
       this.ws = new WebSocket(this.url);
-      
+
       // Set connection timeout
       const connectionTimeout = setTimeout(() => {
         if (!this.isConnected) {
           this.ws.close();
-          reject(new Error('Connection timeout'));
+          reject(new Error("Connection timeout"));
         }
       }, 10000);
-      
-      this.ws.on('open', async () => {
+
+      this.ws.on("open", async () => {
         clearTimeout(connectionTimeout);
         this.isConnected = true;
         this.reconnectAttempts = 0;
-        this.emit('connected');
-        
+        this.emit("connected");
+
         // Start authentication
         try {
           const authRequest = await createAuthRequestMessage(
             (payload) => this.messageSigner(payload),
             this.stateWallet.address
           );
-          
+
           this.ws.send(authRequest);
           // Do not resolve here, wait for auth_success
         } catch (error) {
-          this.emit('error', `Authentication request failed: ${error.message}`);
+          this.emit("error", `Authentication request failed: ${error.message}`);
           reject(error);
         }
       });
-      
-      this.ws.on('message', async (data) => {
+
+      this.ws.on("message", async (data) => {
         try {
           const message = JSON.parse(data);
-          this.emit('message', message);
-          
+          this.emit("message", message);
+
           // Handle authentication flow
-          if (message.res && message.res[1] === 'auth_challenge') {
+          if (message.res && message.res[1] === "auth_challenge") {
             try {
               const authVerify = await createAuthVerifyMessage(
                 (payload) => this.messageSigner(payload),
                 message,
                 this.stateWallet.address
               );
-              
+
               this.ws.send(authVerify);
             } catch (error) {
-              this.emit('error', `Authentication verification failed: ${error.message}`);
+              this.emit(
+                "error",
+                `Authentication verification failed: ${error.message}`
+              );
               reject(error);
             }
-          } else if (message.res && message.res[1] === 'auth_success') {
+          } else if (message.res && message.res[1] === "auth_success") {
             this.isAuthenticated = true;
-            this.emit('authenticated');
+            this.emit("authenticated");
             resolve(); // Authentication successful
-          } else if (message.res && message.res[1] === 'auth_failure') {
+          } else if (message.res && message.res[1] === "auth_failure") {
             this.isAuthenticated = false;
             const error = new Error(`Authentication failed: ${message.res[2]}`);
-            this.emit('error', error.message);
+            this.emit("error", error.message);
             reject(error);
           }
-          
+
           // Handle other response types
           if (message.res && message.res[0]) {
             const requestId = message.res[0];
@@ -1490,52 +1536,55 @@ class ClearNodeConnection extends EventEmitter {
             }
           }
         } catch (error) {
-          console.error('Error handling message:', error);
+          console.error("Error handling message:", error);
         }
       });
-      
-      this.ws.on('error', (error) => {
+
+      this.ws.on("error", (error) => {
         clearTimeout(connectionTimeout);
-        this.emit('error', `WebSocket error: ${error.message}`);
+        this.emit("error", `WebSocket error: ${error.message}`);
         reject(error);
       });
-      
-      this.ws.on('close', (code, reason) => {
+
+      this.ws.on("close", (code, reason) => {
         clearTimeout(connectionTimeout);
         this.isConnected = false;
         this.isAuthenticated = false;
-        this.emit('disconnected', { code, reason: reason.toString() });
-        
+        this.emit("disconnected", { code, reason: reason.toString() });
+
         // Attempt to reconnect
         this.attemptReconnect();
       });
     });
   }
-  
+
   // Send a request and wait for the response
   async sendRequest(method, params = []) {
     if (!this.isConnected || !this.isAuthenticated) {
-      throw new Error('Not connected or authenticated');
+      throw new Error("Not connected or authenticated");
     }
-    
-    const { request, requestId } = await this.createSignedRequest(method, params);
-    
+
+    const { request, requestId } = await this.createSignedRequest(
+      method,
+      params
+    );
+
     return new Promise((resolve, reject) => {
       // Set up response handler
       const timeout = setTimeout(() => {
         this.requestMap.delete(requestId);
         reject(new Error(`Request timeout for ${method}`));
       }, 30000);
-      
+
       this.requestMap.set(requestId, {
         resolve: (response) => {
           clearTimeout(timeout);
           resolve(response);
         },
         reject,
-        timeout
+        timeout,
       });
-      
+
       // Send the request
       try {
         this.ws.send(JSON.stringify(request));
@@ -1546,7 +1595,7 @@ class ClearNodeConnection extends EventEmitter {
       }
     });
   }
-  
+
   // Helper methods for common operations
   async getChannels() {
     // Using the built-in helper function from NitroliteRPC
@@ -1554,129 +1603,133 @@ class ClearNodeConnection extends EventEmitter {
       (payload) => this.messageSigner(payload),
       this.stateWallet.address
     );
-    
+
     return new Promise((resolve, reject) => {
       try {
         const parsed = JSON.parse(message);
         const requestId = parsed.req[0];
-        
+
         const timeout = setTimeout(() => {
           this.requestMap.delete(requestId);
-          reject(new Error('Request timeout for getChannels'));
+          reject(new Error("Request timeout for getChannels"));
         }, 30000);
-        
+
         this.requestMap.set(requestId, {
           resolve: (response) => {
             clearTimeout(timeout);
             resolve(response);
           },
           reject,
-          timeout
+          timeout,
         });
-        
+
         this.ws.send(message);
       } catch (error) {
         reject(error);
       }
     });
   }
-  
+
   async getLedgerBalances(channelId) {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetLedgerBalancesMessage(
       (payload) => this.messageSigner(payload),
       channelId
     );
-    
+
     return new Promise((resolve, reject) => {
       try {
         const parsed = JSON.parse(message);
         const requestId = parsed.req[0];
-        
+
         const timeout = setTimeout(() => {
           this.requestMap.delete(requestId);
-          reject(new Error('Request timeout for getLedgerBalances'));
+          reject(new Error("Request timeout for getLedgerBalances"));
         }, 30000);
-        
+
         this.requestMap.set(requestId, {
           resolve: (response) => {
             clearTimeout(timeout);
             resolve(response);
           },
           reject,
-          timeout
+          timeout,
         });
-        
+
         this.ws.send(message);
       } catch (error) {
         reject(error);
       }
     });
   }
-  
+
   async getConfig() {
     // Using the built-in helper function from NitroliteRPC
     const message = await createGetConfigMessage(
       (payload) => this.messageSigner(payload),
       this.stateWallet.address
     );
-    
+
     return new Promise((resolve, reject) => {
       try {
         const parsed = JSON.parse(message);
         const requestId = parsed.req[0];
-        
+
         const timeout = setTimeout(() => {
           this.requestMap.delete(requestId);
-          reject(new Error('Request timeout for getConfig'));
+          reject(new Error("Request timeout for getConfig"));
         }, 30000);
-        
+
         this.requestMap.set(requestId, {
           resolve: (response) => {
             clearTimeout(timeout);
             resolve(response);
           },
           reject,
-          timeout
+          timeout,
         });
-        
+
         this.ws.send(message);
       } catch (error) {
         reject(error);
       }
     });
   }
-  
+
   // Attempt to reconnect with exponential backoff
   attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      this.emit('error', 'Maximum reconnection attempts reached');
+      this.emit("error", "Maximum reconnection attempts reached");
       return;
     }
-    
+
     this.reconnectAttempts++;
-    const delay = this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
-    
-    this.emit('reconnecting', { attempt: this.reconnectAttempts, delay });
-    
+    const delay =
+      this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1);
+
+    this.emit("reconnecting", { attempt: this.reconnectAttempts, delay });
+
     setTimeout(() => {
-      this.connect().catch(error => {
-        console.error(`Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+      this.connect().catch((error) => {
+        console.error(
+          `Reconnection attempt ${this.reconnectAttempts} failed:`,
+          error
+        );
       });
     }, delay);
   }
-  
+
   // Disconnect from the ClearNode
   disconnect() {
     if (this.ws) {
       // Clear all pending requests
       for (const [requestId, handler] of this.requestMap.entries()) {
         clearTimeout(handler.timeout);
-        handler.reject(new Error('Connection closed'));
+        handler.reject(new Error("Connection closed"));
         this.requestMap.delete(requestId);
       }
-      
-      this.ws.close(1000, 'User initiated disconnect');
+
+      this.ws.close(1000, "User initiated disconnect");
       this.ws = null;
     }
   }
@@ -1685,46 +1738,51 @@ class ClearNodeConnection extends EventEmitter {
 // Example usage
 async function main() {
   // Initialize your state wallet (this is just a placeholder)
-  const privateKey = '0x1234...'; // Your private key
+  const privateKey = "0x1234..."; // Your private key
   const stateWallet = new ethers.Wallet(privateKey);
-  
+
   // Create a ClearNode connection
-  const clearNode = new ClearNodeConnection('wss://clearnode.example.com', stateWallet);
-  
+  const clearNode = new ClearNodeConnection(
+    "wss://clearnode.example.com",
+    stateWallet
+  );
+
   // Set up event handlers
-  clearNode.on('connecting', () => {
-    console.log('Connecting to ClearNode...');
+  clearNode.on("connecting", () => {
+    console.log("Connecting to ClearNode...");
   });
-  
-  clearNode.on('connected', () => {
-    console.log('Connected to ClearNode');
+
+  clearNode.on("connected", () => {
+    console.log("Connected to ClearNode");
   });
-  
-  clearNode.on('authenticated', () => {
-    console.log('Authenticated with ClearNode');
+
+  clearNode.on("authenticated", () => {
+    console.log("Authenticated with ClearNode");
   });
-  
-  clearNode.on('disconnected', ({ code, reason }) => {
+
+  clearNode.on("disconnected", ({ code, reason }) => {
     console.log(`Disconnected from ClearNode: ${code} ${reason}`);
   });
-  
-  clearNode.on('error', (error) => {
+
+  clearNode.on("error", (error) => {
     console.error(`ClearNode error: ${error}`);
   });
-  
-  clearNode.on('reconnecting', ({ attempt, delay }) => {
-    console.log(`Reconnecting (${attempt}/${clearNode.maxReconnectAttempts}) in ${delay}ms...`);
+
+  clearNode.on("reconnecting", ({ attempt, delay }) => {
+    console.log(
+      `Reconnecting (${attempt}/${clearNode.maxReconnectAttempts}) in ${delay}ms...`
+    );
   });
-  
+
   try {
     // Connect and authenticate
     await clearNode.connect();
-    console.log('Successfully connected and authenticated');
-    
+    console.log("Successfully connected and authenticated");
+
     // Get channels
     const channels = await clearNode.getChannels();
-    console.log('Channels:', channels.res[2][0]);
-    
+    console.log("Channels:", channels.res[2][0]);
+
     // Process the channels
     const channelList = channels.res[2][0];
     if (channelList && channelList.length > 0) {
@@ -1732,18 +1790,20 @@ async function main() {
         console.log(`Channel ID: ${channel.channel_id}`);
         console.log(`Status: ${channel.status}`);
         console.log(`Token: ${channel.token}`);
-        
+
         // Get ledger balances for the channel
-        if (channel.status === 'open') {
-          const balances = await clearNode.getLedgerBalances(channel.channel_id);
+        if (channel.status === "open") {
+          const balances = await clearNode.getLedgerBalances(
+            channel.channel_id
+          );
           console.log(`Balances:`, balances.res[2]);
         }
       }
     } else {
-      console.log('No channels found');
+      console.log("No channels found");
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error("Error:", error);
   } finally {
     // Disconnect when done
     clearNode.disconnect();
@@ -1751,8 +1811,8 @@ async function main() {
 }
 
 // Handle process termination
-process.on('SIGINT', () => {
-  console.log('Shutting down...');
+process.on("SIGINT", () => {
+  console.log("Shutting down...");
   // Clean up resources here
   process.exit(0);
 });
@@ -1763,7 +1823,6 @@ main().catch(console.error);
 
   </TabItem>
 </Tabs>
-
 
 ## Security Considerations
 
