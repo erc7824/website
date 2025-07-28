@@ -284,8 +284,8 @@ const authRequestMsg = await createAuthRequestMessage({
   participant: '0xYourSignerAddress',
   app_name: 'Your Domain',
   expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-  scope: 'console',
-  application: '0xYourApplicationAddress',
+  scope: 'console', // optional
+  application: '0xYourApplicationAddress', // optional
   allowances: [],
 });
 
@@ -319,6 +319,7 @@ ws.onmessage = async (event) => {
           },
           { 
             // Domain for EIP-712 signing
+            // Must be equal to your app_name from authRequestMsg
             name: 'Your Domain',
           },
         )
@@ -374,8 +375,8 @@ ws.onopen = async () => {
     participant: '0xYourSignerAddress',
     app_name: 'Your Domain',
     expire: Math.floor(Date.now() / 1000) + 3600, // 1 hour expiration
-    scope: 'console',
-    application: '0xYourApplicationAddress',
+    scope: 'console', // optional
+    application: '0xYourApplicationAddress', // optional
     allowances: [],
   });
   ws.send(authRequestMsg);
@@ -406,6 +407,7 @@ ws.onmessage = async (event) => {
           },
           { 
             // Domain for EIP-712 signing
+            // Must be equal to your app_name from authRequestMsg
             name: 'Your Domain',
           },
         )
